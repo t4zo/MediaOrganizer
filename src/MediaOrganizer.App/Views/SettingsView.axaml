@@ -1,0 +1,76 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MediaOrganizer.App.ViewModels"
+             xmlns:app="using:MediaOrganizer.App"
+             x:Class="MediaOrganizer.App.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+  <ScrollViewer>
+    <StackPanel Margin="24,20" Spacing="16" MaxWidth="820" HorizontalAlignment="Left">
+      <StackPanel Spacing="4">
+        <TextBlock Classes="h1" Text="Configurações" />
+        <TextBlock Classes="muted" Text="As alterações valem a partir da próxima análise." />
+      </StackPanel>
+
+      <Border Classes="card">
+        <StackPanel Spacing="10">
+          <TextBlock Classes="h3" Text="TMDb" />
+          <TextBlock Classes="muted" TextWrapping="Wrap"
+                     Text="Cole a “Chave da API” (v3) ou o “Token de leitura” (v4) da sua conta no TMDb." />
+          <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+            <TextBox Text="{Binding ApiKey}" PasswordChar="•" RevealPassword="{Binding #Reveal.IsChecked}" PlaceholderText="API key do TMDb" />
+            <ToggleButton x:Name="Reveal" Grid.Column="1" ToolTip.Tip="Mostrar/ocultar">
+              <PathIcon Data="{x:Static app:Icons.Key}" />
+            </ToggleButton>
+            <Button Grid.Column="2" Content="Testar" Command="{Binding TestKeyCommand}" />
+          </Grid>
+          <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding KeyStatus, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <PathIcon Data="{x:Static app:Icons.Check}" Classes="success" IsVisible="{Binding KeyValid}" />
+            <TextBlock Text="{Binding KeyStatus}" />
+          </StackPanel>
+          <Button Classes="subtle" Command="{Binding OpenTmdbCommand}" HorizontalAlignment="Left">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <PathIcon Data="{x:Static app:Icons.External}" />
+              <TextBlock Text="Obter uma chave no site do TMDb" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </Border>
+
+      <Border Classes="card">
+        <StackPanel Spacing="12">
+          <TextBlock Classes="h3" Text="Análise" />
+          <CheckBox Content="Renomear legendas junto com os vídeos" IsChecked="{Binding RenameSubtitles}" />
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+            <StackPanel Spacing="6">
+              <TextBlock Text="Pastas ignoradas (uma por linha)" FontWeight="Medium" />
+              <TextBlock Classes="caption" TextWrapping="Wrap" Text="Extras, making-of, audiobooks... nunca são renomeados." />
+              <TextBox Text="{Binding IgnoredFolders}" AcceptsReturn="True" TextWrapping="NoWrap" Height="180" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="6">
+              <TextBlock Text="Arquivos de lixo (padrões com * e ?)" FontWeight="Medium" />
+              <TextBlock Classes="caption" TextWrapping="Wrap" Text="Listados para envio à Lixeira. Nada é apagado sem confirmação." />
+              <TextBox Text="{Binding JunkPatterns}" AcceptsReturn="True" TextWrapping="NoWrap" Height="180" />
+            </StackPanel>
+          </Grid>
+          <Button Classes="accent" Content="Salvar configurações" Command="{Binding SaveCommand}" HorizontalAlignment="Left" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="card">
+        <StackPanel Spacing="10">
+          <TextBlock Classes="h3" Text="Dados do aplicativo" />
+          <TextBlock Classes="muted" TextWrapping="Wrap"
+                     Text="Configurações, histórico, cache e registro de pastas processadas ficam nesta pasta (portátil entre Windows, macOS e Linux)." />
+          <SelectableTextBlock Text="{Binding DataFolder}" FontFamily="monospace" />
+          <WrapPanel ItemSpacing="8" LineSpacing="8">
+            <Button Content="Abrir pasta de dados" Command="{Binding OpenDataFolderCommand}" />
+            <Button Content="Limpar cache do TMDb" Command="{Binding ClearCacheCommand}" />
+            <Button Command="{Binding ClearProcessedCommand}"
+                    Content="{Binding ProcessedCount, StringFormat='Esquecer pastas processadas ({0})'}" />
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MediaOrganizer.App.ViewModels"
+             xmlns:app="using:MediaOrganizer.App"
+             x:Class="MediaOrganizer.App.Views.MatchDialogView"
+             x:DataType="vm:MatchDialogViewModel"
+             Width="640">
+  <DockPanel>
+    <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,12">
+      <TextBlock Classes="h2" Text="{Binding Title}" />
+      <TextBlock Classes="caption" Text="{Binding FolderName, StringFormat='Pasta: {0}'}" />
+    </StackPanel>
+
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="*,90,Auto" ColumnSpacing="8" Margin="0,0,0,10">
+      <TextBox Text="{Binding Query}" PlaceholderText="Título">
+        <TextBox.KeyBindings>
+          <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}" />
+        </TextBox.KeyBindings>
+      </TextBox>
+      <TextBox Grid.Column="1" Text="{Binding Year}" PlaceholderText="Ano" />
+      <Button Grid.Column="2" Command="{Binding SearchCommand}" IsDefault="False">
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <PathIcon Data="{x:Static app:Icons.Search}" />
+          <TextBlock Text="Buscar" />
+        </StackPanel>
+      </Button>
+    </Grid>
+
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,12,0,0">
+      <Button Content="Cancelar" Command="{Binding CancelCommand}" />
+      <Button Classes="accent" Content="Usar esta" Command="{Binding ConfirmCommand}" />
+    </StackPanel>
+
+    <Panel MinHeight="300">
+      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsSearching}" VerticalAlignment="Top" Height="3" MinHeight="3" />
+      <TextBlock Text="{Binding Status}" Classes="muted" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" />
+      <ListBox ItemsSource="{Binding Results}" SelectedItem="{Binding Selected}" MaxHeight="420" Background="Transparent">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:CandidateViewModel">
+            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+              <Border Width="46" Height="69" CornerRadius="4" ClipToBounds="True" Background="{DynamicResource SubtleBrush}">
+                <Image Source="{Binding Poster}" Stretch="UniformToFill" />
+              </Border>
+              <StackPanel Grid.Column="1" Spacing="3">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                  <Border Classes="badge done" IsVisible="{Binding IsCurrent}"><TextBlock Text="atual" /></Border>
+                </StackPanel>
+                <TextBlock Classes="caption" Text="{Binding Original}" IsVisible="{Binding Original, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <TextBlock Classes="caption" Text="{Binding Overview}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+              </StackPanel>
+            </Grid>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Panel>
+  </DockPanel>
+</UserControl>

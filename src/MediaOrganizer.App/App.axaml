@@ -1,0 +1,69 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MediaOrganizer.App.ViewModels"
+             xmlns:views="using:MediaOrganizer.App.Views"
+             x:Class="MediaOrganizer.App.App"
+             Name="MediaOrganizer"
+             RequestedThemeVariant="Default">
+
+  <!-- Cada ViewModel de página/diálogo é exibido pela View correspondente. -->
+  <Application.DataTemplates>
+    <DataTemplate DataType="vm:OrganizeViewModel"><views:OrganizeView /></DataTemplate>
+    <DataTemplate DataType="vm:HistoryViewModel"><views:HistoryView /></DataTemplate>
+    <DataTemplate DataType="vm:SettingsViewModel"><views:SettingsView /></DataTemplate>
+    <DataTemplate DataType="vm:OnboardingViewModel"><views:OnboardingView /></DataTemplate>
+    <DataTemplate DataType="vm:MatchDialogViewModel"><views:MatchDialogView /></DataTemplate>
+    <DataTemplate DataType="vm:ConfirmDialogViewModel"><views:ConfirmDialogView /></DataTemplate>
+  </Application.DataTemplates>
+
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="AppBackgroundBrush" Color="#F6F6F9" />
+          <SolidColorBrush x:Key="SidebarBrush" Color="#EEEEF4" />
+          <SolidColorBrush x:Key="CardBrush" Color="#FFFFFF" />
+          <SolidColorBrush x:Key="CardBorderBrush" Color="#E3E3EC" />
+          <SolidColorBrush x:Key="SubtleBrush" Color="#F1F1F6" />
+          <SolidColorBrush x:Key="MutedTextBrush" Color="#6B6B7D" />
+          <SolidColorBrush x:Key="OverlayBrush" Color="#66000000" />
+          <SolidColorBrush x:Key="SuccessBrush" Color="#1E8E4E" />
+          <SolidColorBrush x:Key="SuccessSoftBrush" Color="#E3F5EA" />
+          <SolidColorBrush x:Key="WarningBrush" Color="#B76E00" />
+          <SolidColorBrush x:Key="WarningSoftBrush" Color="#FFF3DC" />
+          <SolidColorBrush x:Key="DangerBrush" Color="#C42B30" />
+          <SolidColorBrush x:Key="DangerSoftBrush" Color="#FCE6E7" />
+          <SolidColorBrush x:Key="AccentSoftBrush" Color="#ECEAFD" />
+          <SolidColorBrush x:Key="AccentTextBrush" Color="#4A3AD6" />
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="AppBackgroundBrush" Color="#16161C" />
+          <SolidColorBrush x:Key="SidebarBrush" Color="#1D1D25" />
+          <SolidColorBrush x:Key="CardBrush" Color="#22222B" />
+          <SolidColorBrush x:Key="CardBorderBrush" Color="#33333F" />
+          <SolidColorBrush x:Key="SubtleBrush" Color="#2A2A34" />
+          <SolidColorBrush x:Key="MutedTextBrush" Color="#A0A0B2" />
+          <SolidColorBrush x:Key="OverlayBrush" Color="#99000000" />
+          <SolidColorBrush x:Key="SuccessBrush" Color="#4CC981" />
+          <SolidColorBrush x:Key="SuccessSoftBrush" Color="#1B3326" />
+          <SolidColorBrush x:Key="WarningBrush" Color="#F2B347" />
+          <SolidColorBrush x:Key="WarningSoftBrush" Color="#3A2E15" />
+          <SolidColorBrush x:Key="DangerBrush" Color="#F2757A" />
+          <SolidColorBrush x:Key="DangerSoftBrush" Color="#3D1E21" />
+          <SolidColorBrush x:Key="AccentSoftBrush" Color="#2C2752" />
+          <SolidColorBrush x:Key="AccentTextBrush" Color="#AFA6FF" />
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+
+  <Application.Styles>
+    <FluentTheme>
+      <FluentTheme.Palettes>
+        <ColorPaletteResources x:Key="Light" Accent="#5B4BE8" />
+        <ColorPaletteResources x:Key="Dark" Accent="#7B6CF6" />
+      </FluentTheme.Palettes>
+    </FluentTheme>
+    <StyleInclude Source="avares://MediaOrganizer/Styles/AppStyles.axaml" />
+  </Application.Styles>
+</Application>

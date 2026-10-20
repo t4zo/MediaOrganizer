@@ -1,0 +1,10 @@
+bin/
+obj/
+dist/
+data/
+.vs/
+.idea/
+*.user
+*.swp
+.DS_Store
+artifacts/

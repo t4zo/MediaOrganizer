@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MediaOrganizer.App/MediaOrganizer.App.csproj" />
+    <Project Path="src/MediaOrganizer.Core/MediaOrganizer.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MediaOrganizer.Core.Tests/MediaOrganizer.Core.Tests.csproj" />
+  </Folder>
+</Solution>

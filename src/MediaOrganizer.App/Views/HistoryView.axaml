@@ -1,0 +1,70 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MediaOrganizer.App.ViewModels"
+             xmlns:app="using:MediaOrganizer.App"
+             x:Class="MediaOrganizer.App.Views.HistoryView"
+             x:DataType="vm:HistoryViewModel">
+
+  <DockPanel Margin="24,20">
+    <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,16">
+      <TextBlock Classes="h1" Text="Histórico" />
+      <TextBlock Classes="muted" Text="Cada vez que você aplica renomeações, um lote é registrado aqui e pode ser desfeito." />
+    </StackPanel>
+
+    <Panel>
+      <Border Classes="card" IsVisible="{Binding IsEmpty}">
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+          <PathIcon Data="{x:Static app:Icons.History}" Width="48" Height="48" Classes="accent" HorizontalAlignment="Center" />
+          <TextBlock Classes="h2" Text="Nenhuma renomeação ainda" HorizontalAlignment="Center" />
+          <TextBlock Classes="muted" Text="Os lotes aplicados na tela Organizar aparecerão aqui." HorizontalAlignment="Center" />
+        </StackPanel>
+      </Border>
+
+      <ScrollViewer IsVisible="{Binding !IsEmpty}">
+        <ItemsControl ItemsSource="{Binding Batches}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Spacing="10" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:BatchViewModel">
+              <Border Classes="card" Padding="14">
+                <StackPanel Spacing="8">
+                  <DockPanel>
+                    <Button DockPanel.Dock="Right" Command="{Binding UndoCommand}" IsVisible="{Binding CanUndo}">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <PathIcon Data="{x:Static app:Icons.Undo}" />
+                        <TextBlock Text="Desfazer" />
+                      </StackPanel>
+                    </Button>
+                    <Border DockPanel.Dock="Right" Classes="badge" IsVisible="{Binding IsUndone}" Margin="0,0,8,0">
+                      <TextBlock Text="Desfeito" />
+                    </Border>
+                    <StackPanel Spacing="2">
+                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Classes="caption" Text="{Binding When}" />
+                        <TextBlock Classes="caption" Text="·" />
+                        <TextBlock Classes="caption" Text="{Binding KindText}" />
+                        <TextBlock Classes="caption" Text="·" />
+                        <TextBlock Classes="caption" Text="{Binding Summary}" />
+                      </StackPanel>
+                    </StackPanel>
+                  </DockPanel>
+                  <Expander Header="Ver arquivos" IsExpanded="{Binding IsExpanded}" HorizontalAlignment="Stretch">
+                    <ItemsControl ItemsSource="{Binding Operations}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="x:String">
+                          <SelectableTextBlock Text="{Binding}" FontSize="12" TextWrapping="Wrap" Margin="0,2" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </Expander>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </Panel>
+  </DockPanel>
+</UserControl>

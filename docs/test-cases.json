@@ -1,0 +1,67 @@
+{
+  "$comment": "Casos de conformidade independentes de linguagem. Usados pelos testes xUnit e reutilizáveis para validar um port (Go/Rust). Ver docs/SPEC.md.",
+  "episodes": [
+    { "input": "American.Primeval.S01E01.1080p.10bit.WEBRip.6CH.x265.HEVC-PSA", "show": "American Primeval", "year": null, "season": 1, "episode": 1, "lastEpisode": null, "title": null },
+    { "input": "A.Knight.of.the.Seven.Kingdoms.S01E05.1080p.10bit.WEBRip.6CH.x265.HEVC-PSA", "show": "A Knight of the Seven Kingdoms", "year": null, "season": 1, "episode": 5, "lastEpisode": null, "title": null },
+    { "input": "Band of Brothers E01", "show": "Band of Brothers", "year": null, "season": 1, "episode": 1, "lastEpisode": null, "title": null },
+    { "input": "Better.Call.Saul.S01E01.1080p.BluRay.x265-RARBG", "show": "Better Call Saul", "year": null, "season": 1, "episode": 1, "lastEpisode": null, "title": null },
+    { "input": "Breaking.Bad.S01E02.Cat's.in.the.Bag.1080p.10bit.BluRay.6CH.x265.HEVC-PSA", "show": "Breaking Bad", "year": null, "season": 1, "episode": 2, "lastEpisode": null, "title": "Cat's in the Bag" },
+    { "input": "Dark Matter 2024 S01E01", "show": "Dark Matter", "year": 2024, "season": 1, "episode": 1, "lastEpisode": null, "title": null },
+    { "input": "Dept.Q.S01E01.1080p.10bit.WEBRip.6CH.x265.HEVC-PSA", "show": "Dept Q", "year": null, "season": 1, "episode": 1, "lastEpisode": null, "title": null },
+    { "input": "Foundation S01E07 Mysteries and Martyrs", "show": "Foundation", "year": null, "season": 1, "episode": 7, "lastEpisode": null, "title": "Mysteries and Martyrs" },
+    { "input": "Game of Thrones S06E01 -The Red Woman", "show": "Game of Thrones", "year": null, "season": 6, "episode": 1, "lastEpisode": null, "title": "The Red Woman" },
+    { "input": "Invincible.2021.S03E01.1080p.10bit.WEBRip.6CH.x265.HEVC-PSA", "show": "Invincible", "year": 2021, "season": 3, "episode": 1, "lastEpisode": null, "title": null },
+    { "input": "Prison Break S04E01-E02 - Scylla & Breaking and Entering (1080p BluRay x265 Silence)", "show": "Prison Break", "year": null, "season": 4, "episode": 1, "lastEpisode": 2, "title": "Scylla & Breaking and Entering" },
+    { "input": "Prison Break S01E01 - Pilot (1)", "show": "Prison Break", "year": null, "season": 1, "episode": 1, "lastEpisode": null, "title": "Pilot (1)" },
+    { "input": "Arcane S02E09 - REPACK", "show": "Arcane", "year": null, "season": 2, "episode": 9, "lastEpisode": null, "title": null },
+    { "input": "Ted Lasso - S03E08", "show": "Ted Lasso", "year": null, "season": 3, "episode": 8, "lastEpisode": null, "title": null },
+    { "input": "Chernobyl S01E01 - 1.23.45", "show": "Chernobyl", "year": null, "season": 1, "episode": 1, "lastEpisode": null, "title": "1.23.45" },
+    { "input": "Stranger.Things.S05E01.2160p.10bit.HDR.DV.WEBRip.6CH.x265.HEVC-PSA", "show": "Stranger Things", "year": null, "season": 5, "episode": 1, "lastEpisode": null, "title": null },
+    { "input": "Widow's.Bay.S01E01.1080p.10bit.WEBRip.6CH.x265.HEVC-PSA", "show": "Widow's Bay", "year": null, "season": 1, "episode": 1, "lastEpisode": null, "title": null },
+    { "input": "X-Men '97 S01E01", "show": "X-Men '97", "year": null, "season": 1, "episode": 1, "lastEpisode": null, "title": null },
+    { "input": "Monster.The.Ed.Gein.Story.S01E01.1080p.10bit.WEBRip.6CH.x265.HEVC-PSA", "show": "Monster The Ed Gein Story", "year": null, "season": 1, "episode": 1, "lastEpisode": null, "title": null },
+    { "input": "Dark S01E01 - Secrets", "show": "Dark", "year": null, "season": 1, "episode": 1, "lastEpisode": null, "title": "Secrets" },
+    { "input": "The.Office.US.2x05.Halloween.HDTV.XviD", "show": "The Office US", "year": null, "season": 2, "episode": 5, "lastEpisode": null, "title": "Halloween" },
+    { "input": "show.name.s01e01e02.720p.web-dl", "show": "show name", "year": null, "season": 1, "episode": 1, "lastEpisode": 2, "title": null },
+    { "input": "The_Bear_S03E10_Forever_WEB-DL", "show": "The Bear", "year": null, "season": 3, "episode": 10, "lastEpisode": null, "title": "Forever" }
+  ],
+  "notEpisodes": [
+    "Breaking Bad - S01 Extra - Inside Breaking Bad",
+    "Beyond the Ink"
+  ],
+  "movies": [
+    { "input": "Inception.2010.1080p.BluRay.x264-GROUP", "title": "Inception", "year": 2010 },
+    { "input": "Blade Runner 2049 (2017)", "title": "Blade Runner 2049", "year": 2017 },
+    { "input": "2001.A.Space.Odyssey.1968.REMASTERED.1080p.BluRay", "title": "2001 A Space Odyssey", "year": 1968 },
+    { "input": "The Matrix", "title": "The Matrix", "year": null },
+    { "input": "Cidade.de.Deus.2002.720p.BRRip", "title": "Cidade de Deus", "year": 2002 }
+  ],
+  "sanitize": [
+    { "input": "1:23:45", "output": "1.23.45" },
+    { "input": "Monster: The Ed Gein Story", "output": "Monster - The Ed Gein Story" },
+    { "input": "Re:Zero", "output": "Re-Zero" },
+    { "input": "AC/DC", "output": "AC-DC" },
+    { "input": "Dept. Q", "output": "Dept. Q" },
+    { "input": "What If...?", "output": "What If" },
+    { "input": "Say \"Hello\"", "output": "Say 'Hello'" },
+    { "input": "Who?  Me*", "output": "Who Me" },
+    { "input": "Shōgun", "output": "Shōgun" },
+    { "input": "CON", "output": "CON_" }
+  ],
+  "format": [
+    { "show": "Dark", "season": 1, "episode": 1, "lastEpisode": null, "title": "Geheimnisse", "output": "Dark S01E01 - Geheimnisse" },
+    { "show": "Prison Break", "season": 4, "episode": 1, "lastEpisode": 2, "title": "Scylla & Breaking and Entering", "output": "Prison Break S04E01-E02 - Scylla & Breaking and Entering" },
+    { "show": "Band of Brothers", "season": 1, "episode": 1, "lastEpisode": null, "title": null, "output": "Band of Brothers S01E01" },
+    { "show": "Chernobyl", "season": 1, "episode": 1, "lastEpisode": null, "title": "1:23:45", "output": "Chernobyl S01E01 - 1.23.45" },
+    { "show": "Monster: The Ed Gein Story", "season": 1, "episode": 10, "lastEpisode": null, "title": "Pilot", "output": "Monster - The Ed Gein Story S01E10 - Pilot" }
+  ],
+  "subtitleLanguages": [
+    { "input": "3_English", "language": "en", "flag": null },
+    { "input": ".pt-BR", "language": "pt-BR", "flag": null },
+    { "input": "Portuguese (Brazil)", "language": "pt-BR", "flag": null },
+    { "input": ".forced.en", "language": "en", "flag": "forced" },
+    { "input": "eng.sdh", "language": "en", "flag": "sdh" },
+    { "input": "5_Spanish", "language": "es", "flag": null },
+    { "input": "", "language": null, "flag": null }
+  ]
+}

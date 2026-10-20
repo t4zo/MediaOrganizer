@@ -1,0 +1,18 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <Version>1.0.0</Version>
+    <Authors>MediaOrganizer contributors</Authors>
+    <Product>MediaOrganizer</Product>
+    <NeutralLanguage>pt-BR</NeutralLanguage>
+    <!-- CA1031: catch genérico é intencional nas fronteiras de I/O e UI.
+         CA1848/CA1873: sem logging estruturado neste app.
+         CA1515: tipos públicos são necessários para os testes e para o XAML. -->
+    <NoWarn>$(NoWarn);CA1031;CA1848;CA1873;CA1515</NoWarn>
+  </PropertyGroup>
+</Project>

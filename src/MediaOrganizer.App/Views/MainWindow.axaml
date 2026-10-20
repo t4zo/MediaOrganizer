@@ -1,0 +1,76 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MediaOrganizer.App.ViewModels"
+        xmlns:app="using:MediaOrganizer.App"
+        x:Class="MediaOrganizer.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="MediaOrganizer"
+        Icon="/Assets/app.ico"
+        Width="1280" Height="820" MinWidth="980" MinHeight="620"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource AppBackgroundBrush}">
+
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Escape" Command="{Binding CloseDialogCommand}" />
+  </Window.KeyBindings>
+
+  <Panel>
+    <Grid ColumnDefinitions="220,*">
+      <!-- Barra lateral -->
+      <Border Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,1,0">
+        <DockPanel Margin="14,18">
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="10" Margin="6,0,0,22">
+            <Image Source="/Assets/app.png" Width="32" Height="32" />
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="MediaOrganizer" FontWeight="SemiBold" FontSize="15" />
+              <TextBlock Text="Séries e filmes" Classes="caption" />
+            </StackPanel>
+          </StackPanel>
+
+          <TextBlock DockPanel.Dock="Bottom" Classes="caption" TextWrapping="Wrap" Margin="6,0" FontSize="10.5"
+                     Text="Dados de séries e filmes fornecidos pelo TMDb. Este produto usa a API do TMDB, mas não é endossado nem certificado pelo TMDB." />
+
+          <ListBox Classes="nav" ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedNav}"
+                   IsVisible="{Binding !IsOnboarding}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:NavItem">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <PathIcon Data="{Binding Icon}" />
+                  <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                </StackPanel>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </Border>
+
+      <!-- Página atual -->
+      <ContentControl Grid.Column="1" Content="{Binding CurrentPage}" />
+    </Grid>
+
+    <!-- Diálogo sobreposto -->
+    <Border Background="{DynamicResource OverlayBrush}" IsVisible="{Binding Shell.Dialog, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <Border Classes="card" Padding="24" MaxWidth="760" MaxHeight="680" Margin="40"
+              HorizontalAlignment="Center" VerticalAlignment="Center" BoxShadow="0 12 40 0 #40000000">
+        <ContentControl Content="{Binding Shell.Dialog}" />
+      </Border>
+    </Border>
+
+    <!-- Notificação (toast) -->
+    <Border IsVisible="{Binding Shell.Toast, Converter={x:Static ObjectConverters.IsNotNull}}"
+            Classes="card" Padding="14,10" Margin="0,0,0,96" MaxWidth="640"
+            HorizontalAlignment="Center" VerticalAlignment="Bottom" BoxShadow="0 8 24 0 #33000000">
+      <Panel DataContext="{Binding Shell.Toast}">
+      <StackPanel x:DataType="vm:ToastViewModel" Orientation="Horizontal" Spacing="12">
+        <PathIcon Data="{x:Static app:Icons.Check}" Classes="success" IsVisible="{Binding !IsError}" VerticalAlignment="Center" />
+        <PathIcon Data="{x:Static app:Icons.Error}" Classes="danger" IsVisible="{Binding IsError}" VerticalAlignment="Center" />
+        <TextBlock Text="{Binding Message}" TextWrapping="Wrap" MaxWidth="440" VerticalAlignment="Center" />
+        <Button Content="{Binding ActionText}" Command="{Binding RunActionCommand}" IsVisible="{Binding HasAction}" Classes="accent" />
+        <Button Classes="subtle" Command="{Binding DismissCommand}" ToolTip.Tip="Fechar">
+          <PathIcon Data="{x:Static app:Icons.Close}" Width="12" Height="12" />
+        </Button>
+      </StackPanel>
+      </Panel>
+    </Border>
+  </Panel>
+</Window>
