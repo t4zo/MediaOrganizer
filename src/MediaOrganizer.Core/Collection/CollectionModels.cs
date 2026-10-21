@@ -21,12 +21,38 @@ public sealed record EpisodeRef(int Season, int Episode, string? Title, DateOnly
     public string Code => $"S{Season:00}E{Episode:00}";
 }
 
-/// <summary>Situação de uma temporada: só episódios já exibidos contam como esperados.</summary>
-/// <param name="Aired">Episódios já exibidos (data de exibição até hoje).</param>
-/// <param name="Present">Episódios exibidos que estão na pasta.</param>
-/// <param name="Upcoming">Episódios ainda não exibidos ou sem data.</param>
-public sealed record SeasonReport(int Season, int Aired, int Present, IReadOnlyList<EpisodeRef> Missing, IReadOnlyList<EpisodeRef> Upcoming)
+public enum EpisodeState
 {
+    /// <summary>Exibido e na pasta.</summary>
+    Present,
+    /// <summary>Exibido e ausente da pasta.</summary>
+    Missing,
+    /// <summary>Ainda não exibido (data futura ou sem data) e ausente da pasta.</summary>
+    Upcoming,
+    /// <summary>Na pasta, mas o TMDb ainda não registra a exibição.</summary>
+    PresentNotAired,
+}
+
+/// <summary>Um episódio oficial e sua situação na biblioteca.</summary>
+public sealed record EpisodeStatus(EpisodeRef Episode, EpisodeState State);
+
+/// <summary>
+/// Situação de uma temporada, com todos os episódios oficiais na ordem do TMDb.
+/// Só episódios já exibidos contam como esperados.
+/// </summary>
+public sealed record SeasonReport(int Season, IReadOnlyList<EpisodeStatus> Episodes)
+{
+    /// <summary>Episódios já exibidos (data de exibição até hoje).</summary>
+    public int Aired => Episodes.Count(e => e.State is EpisodeState.Present or EpisodeState.Missing);
+
+    /// <summary>Episódios exibidos que estão na pasta.</summary>
+    public int Present => Episodes.Count(e => e.State == EpisodeState.Present);
+
+    public IReadOnlyList<EpisodeRef> Missing => [.. Episodes.Where(e => e.State == EpisodeState.Missing).Select(e => e.Episode)];
+
+    /// <summary>Episódios ainda não exibidos ou sem data, ausentes da pasta.</summary>
+    public IReadOnlyList<EpisodeRef> Upcoming => [.. Episodes.Where(e => e.State == EpisodeState.Upcoming).Select(e => e.Episode)];
+
     public bool IsSpecials => Season == 0;
     public bool IsComplete => Missing.Count == 0;
     public bool IsNotStarted => Aired > 0 && Present == 0;

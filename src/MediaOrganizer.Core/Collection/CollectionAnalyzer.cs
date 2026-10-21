@@ -38,7 +38,7 @@ public sealed class CollectionAnalyzer(TmdbClient tmdb, SettingsStore settings, 
             foreach (var season in SeasonNumbers(details, present))
             {
                 var report = await AnalyzeSeasonAsync(season, titles, present, today, ct).ConfigureAwait(false);
-                if (report.Aired > 0 || report.Upcoming.Count > 0) seasons.Add(report);
+                if (report.Episodes.Count > 0) seasons.Add(report);
             }
 
             var status = seasons.Any(s => !s.IsSpecials && !s.IsComplete) ? CollectionStatus.Incomplete : CollectionStatus.Complete;
@@ -53,9 +53,7 @@ public sealed class CollectionAnalyzer(TmdbClient tmdb, SettingsStore settings, 
     private static async Task<SeasonReport> AnalyzeSeasonAsync(
         int season, EpisodeTitles titles, HashSet<(int Season, int Episode)> present, DateOnly today, CancellationToken ct)
     {
-        int aired = 0, have = 0;
-        var missing = new List<EpisodeRef>();
-        var upcoming = new List<EpisodeRef>();
+        var episodes = new List<EpisodeStatus>();
 
         foreach (var episode in await titles.EpisodesAsync(season, ct).ConfigureAwait(false))
         {
@@ -63,22 +61,20 @@ public sealed class CollectionAnalyzer(TmdbClient tmdb, SettingsStore settings, 
             var isAired = airDate is { } date && date <= today;
             var isPresent = present.Contains((season, episode.EpisodeNumber));
 
-            if (!isAired)
+            // Sem data ou no futuro: não conta como esperado (nem como faltando).
+            var state = (isAired, isPresent) switch
             {
-                // Sem data ou no futuro: não conta como esperado.
-                if (!isPresent) upcoming.Add(await RefAsync().ConfigureAwait(false));
-                continue;
-            }
+                (true, true) => EpisodeState.Present,
+                (true, false) => EpisodeState.Missing,
+                (false, true) => EpisodeState.PresentNotAired,
+                (false, false) => EpisodeState.Upcoming,
+            };
 
-            aired++;
-            if (isPresent) have++;
-            else missing.Add(await RefAsync().ConfigureAwait(false));
-
-            async Task<EpisodeRef> RefAsync() =>
-                new(season, episode.EpisodeNumber, await titles.GetAsync(season, episode.EpisodeNumber, ct).ConfigureAwait(false), airDate);
+            var title = await titles.GetAsync(season, episode.EpisodeNumber, ct).ConfigureAwait(false);
+            episodes.Add(new EpisodeStatus(new EpisodeRef(season, episode.EpisodeNumber, title, airDate), state));
         }
 
-        return new SeasonReport(season, aired, have, missing, upcoming);
+        return new SeasonReport(season, episodes);
     }
 
     /// <summary>Temporadas oficiais (com os especiais apenas se a opção estiver ligada) mais as que existem nos arquivos.</summary>

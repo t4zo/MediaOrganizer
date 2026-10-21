@@ -67,6 +67,27 @@ public sealed class CollectionTests : IDisposable
     }
 
     [Fact]
+    public async Task ListsEveryOfficialEpisodeWithItsState()
+    {
+        _library.File("Test Show/Test Show S01E01.mkv");
+        _library.File("Test Show/Test Show S02E03.mkv"); // na pasta, mas com estreia no futuro
+
+        var report = await AnalyzeAsync();
+
+        Assert.Equal(
+            [EpisodeState.Present, EpisodeState.Missing, EpisodeState.Missing],
+            report.Seasons.Single(s => s.Season == 1).Episodes.Select(e => e.State));
+
+        var s2 = report.Seasons.Single(s => s.Season == 2);
+        Assert.Equal(
+            [(1, EpisodeState.Missing), (2, EpisodeState.Missing), (3, EpisodeState.PresentNotAired), (4, EpisodeState.Upcoming)],
+            s2.Episodes.Select(e => (e.Episode.Episode, e.State)));
+        Assert.Equal("Six", s2.Episodes[2].Episode.Title);
+        Assert.Equal((2, 0), (s2.Aired, s2.Present)); // não exibido não conta no progresso
+        Assert.Equal(EpisodeState.Missing, Assert.Single(report.Specials!.Episodes).State);
+    }
+
+    [Fact]
     public async Task MissingSpecialsDoNotMakeSeriesIncomplete()
     {
         _library.File("Test Show/Test Show S01E01-E03.mkv");

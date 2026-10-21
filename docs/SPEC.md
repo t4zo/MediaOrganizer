@@ -255,12 +255,17 @@ Somente para séries. Usa a mesma varredura (1.1–1.3) e as **correspondências
 2. Detalhes: `tv/{id}?language=en-US`. Temporadas = `seasons[].season_number` (ou `1..number_of_seasons` se ausente) ∪ temporadas presentes nos arquivos. A temporada 0 só entra com `includeSpecials` ligado.
 3. Episódios de cada temporada: `tv/{id}/season/{n}` no idioma da seção 4; títulos com o mesmo fallback para inglês.
 4. **Presentes**: `SxxExx` dos vídeos (2.2); `S04E01-E02` conta os dois.
-5. Para cada episódio oficial: **exibido** se `air_date` (formato `yyyy-MM-dd`) ≤ hoje (data local).
-   - exibido e presente → conta em *presentes*;
-   - exibido e ausente → **faltando**;
-   - não exibido (data futura ou sem data) e ausente → **próximos** (não conta como faltando).
-   - Arquivos de episódios que o TMDb não lista são desconsiderados.
-6. Temporadas sem exibidos e sem próximos são omitidas.
+5. **Todos** os episódios oficiais da temporada são listados, na ordem do TMDb, cada um com uma situação. **Exibido** = `air_date` (formato `yyyy-MM-dd`) ≤ hoje (data local):
+
+   | Exibido | Na pasta | Situação | Conta no progresso |
+   | --- | --- | --- | --- |
+   | sim | sim | `Present` — "Na pasta" | presente e esperado |
+   | sim | não | `Missing` — "Faltando" | esperado |
+   | não (futuro ou sem data) | não | `Upcoming` — "Não exibido" | não |
+   | não (futuro ou sem data) | sim | `PresentNotAired` — "Na pasta (ainda não exibido)" | não |
+
+   Arquivos de episódios que o TMDb não lista são desconsiderados.
+6. Temporadas sem nenhum episódio oficial são omitidas. Na interface, a primeira temporada regular começa expandida e as demais (e os especiais) recolhidas.
 7. Status da série: `Incomplete` se alguma temporada **regular** (≠ 0) tiver faltando; senão `Complete`. Os especiais aparecem à parte e não entram no progresso (`presentes / exibidos` das temporadas regulares).
 8. "Atualizar" refaz as chamadas ignorando o cache (a resposta nova substitui a cacheada).
 

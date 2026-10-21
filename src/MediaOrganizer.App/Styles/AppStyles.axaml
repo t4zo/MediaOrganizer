@@ -21,6 +21,9 @@
     <Setter Property="FontSize" Value="12" />
     <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
   </Style>
+  <Style Selector="TextBlock.caption.warning">
+    <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+  </Style>
 
   <!-- Cartões -->
   <Style Selector="Border.card">

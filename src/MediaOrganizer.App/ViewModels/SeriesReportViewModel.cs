@@ -15,8 +15,15 @@ public sealed partial class SeriesReportViewModel : ObservableObject
     {
         _owner = owner;
         Report = report;
-        Seasons = [.. report.RegularSeasons.Select(s => new SeasonReportViewModel(s))];
-        Specials = report.Specials is { } specials ? new SeasonReportViewModel(specials) : null;
+        (Seasons, Specials) = BuildSeasons(report);
+    }
+
+    /// <summary>A primeira temporada começa expandida; as demais e os especiais, recolhidos.</summary>
+    private static (IReadOnlyList<SeasonReportViewModel>, SeasonReportViewModel?) BuildSeasons(SeriesReport report)
+    {
+        IReadOnlyList<SeasonReportViewModel> seasons = [.. report.RegularSeasons.Select((s, i) => new SeasonReportViewModel(s) { IsExpanded = i == 0 })];
+        var specials = report.Specials is { } s0 ? new SeasonReportViewModel(s0) { IsExpanded = seasons.Count == 0 } : null;
+        return (seasons, specials);
     }
 
     public SeriesReport Report { get; private set; }
@@ -58,8 +65,7 @@ public sealed partial class SeriesReportViewModel : ObservableObject
     internal void Replace(SeriesReport report)
     {
         Report = report;
-        Seasons = [.. report.RegularSeasons.Select(s => new SeasonReportViewModel(s))];
-        Specials = report.Specials is { } specials ? new SeasonReportViewModel(specials) : null;
+        (Seasons, Specials) = BuildSeasons(report);
         OnPropertyChanged(string.Empty);
     }
 
@@ -73,10 +79,15 @@ public sealed partial class SeriesReportViewModel : ObservableObject
     private Task OpenTmdbAsync() => Report.Show is { } show ? _owner.OpenUrlAsync(show.WebUrl) : Task.CompletedTask;
 }
 
-/// <summary>Uma temporada no detalhe da Coleção.</summary>
-public sealed class SeasonReportViewModel(SeasonReport season)
+/// <summary>Uma temporada no detalhe da Coleção, com todos os episódios e a situação de cada um.</summary>
+public sealed partial class SeasonReportViewModel(SeasonReport season) : ObservableObject
 {
     public SeasonReport Season { get; } = season;
+
+    [ObservableProperty]
+    public partial bool IsExpanded { get; set; }
+
+    public IReadOnlyList<EpisodeRowViewModel> Episodes { get; } = [.. season.Episodes.Select(e => new EpisodeRowViewModel(e))];
 
     public string Title => Season.IsSpecials ? "Especiais" : $"Temporada {Season.Season}";
     public string CountText => Season.Aired == 0 ? "" : $"{Season.Present}/{Season.Aired}";
@@ -91,14 +102,25 @@ public sealed class SeasonReportViewModel(SeasonReport season)
         : Season.IsComplete ? "Completa"
         : $"Faltam {Season.Missing.Count}";
 
-    public IReadOnlyList<string> MissingLines { get; } = [.. season.Missing.Select(Format)];
-    public IReadOnlyList<string> UpcomingLines { get; } = [.. season.Upcoming.Select(Format)];
-    public bool HasMissing => MissingLines.Count > 0;
-    public bool HasUpcoming => UpcomingLines.Count > 0;
+}
 
-    private static string Format(EpisodeRef episode)
+/// <summary>Uma linha de episódio: código, título, data de exibição e situação.</summary>
+public sealed class EpisodeRowViewModel(EpisodeStatus status)
+{
+    public string Code { get; } = status.Episode.Code;
+    public string Title { get; } = status.Episode.Title ?? "(sem título)";
+    public string DateText { get; } = status.Episode.AirDate?.ToString("d", CultureInfo.CurrentCulture) ?? "data a definir";
+
+    public bool IsPresent => status.State == EpisodeState.Present;
+    public bool IsMissing => status.State == EpisodeState.Missing;
+    public bool IsUpcoming => status.State == EpisodeState.Upcoming;
+    public bool IsPresentNotAired => status.State == EpisodeState.PresentNotAired;
+
+    public string StateText => status.State switch
     {
-        var date = episode.AirDate?.ToString("d", CultureInfo.CurrentCulture) ?? "data a definir";
-        return string.IsNullOrEmpty(episode.Title) ? $"{episode.Code} · {date}" : $"{episode.Code} · {episode.Title} · {date}";
-    }
+        EpisodeState.Present => "Na pasta",
+        EpisodeState.Missing => "Faltando",
+        EpisodeState.Upcoming => "Não exibido",
+        _ => "Na pasta (ainda não exibido)",
+    };
 }
