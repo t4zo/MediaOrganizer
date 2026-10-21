@@ -50,8 +50,12 @@ internal static class ServiceRegistration
                 sp.GetRequiredService<IHttpClientFactory>().CreateClient(OpenSubtitlesProvider.ProviderName),
                 () => settings.Current.OpenSubtitles, () => settings.Current.IncludeMachineTranslated, subtitleCache);
         });
+        services.AddHttpClient(SubDlProvider.ProviderName);
+        services.AddSingleton(sp => new SubDlProvider(
+            sp.GetRequiredService<IHttpClientFactory>().CreateClient(SubDlProvider.ProviderName),
+            () => sp.GetRequiredService<SettingsStore>().Current.SubDl, subtitleCache));
         services.AddSingleton(sp => new SubtitleProviderSet(
-            [sp.GetRequiredService<OpenSubtitlesProvider>()],
+            [sp.GetRequiredService<OpenSubtitlesProvider>(), sp.GetRequiredService<SubDlProvider>()],
             sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton<SubtitleAnalyzer>();
         services.AddSingleton<SubtitleDownloader>();

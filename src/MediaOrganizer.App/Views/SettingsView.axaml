@@ -121,6 +121,26 @@
                        Text="A senha fica salva em texto puro em settings.json (na pasta de dados), como a chave do TMDb." />
           </StackPanel>
 
+          <Separator />
+
+          <StackPanel Spacing="8">
+            <DockPanel>
+              <CheckBox DockPanel.Dock="Right" Content="Ativado" IsChecked="{Binding SubDlEnabled}" />
+              <TextBlock Text="SubDL" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </DockPanel>
+            <TextBlock Classes="caption" TextWrapping="Wrap"
+                       Text="Consultado quando o OpenSubtitles não tem a legenda ou a cota dele acabou. Traz também pacotes de temporada." />
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+              <TextBox Text="{Binding SubDlApiKey}" PasswordChar="•" PlaceholderText="Chave da API do SubDL" />
+              <Button Grid.Column="1" Classes="subtle" Command="{Binding OpenSubDlCommand}" ToolTip.Tip="Criar uma chave no site do SubDL">
+                <PathIcon Data="{x:Static app:Icons.External}" />
+              </Button>
+              <Button Grid.Column="2" Content="Testar" Command="{Binding TestSubDlCommand}" />
+            </Grid>
+            <TextBlock Classes="caption" Text="{Binding SubDlStatus}" TextWrapping="Wrap"
+                       IsVisible="{Binding SubDlStatus, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          </StackPanel>
+
           <Button Classes="accent" Content="Salvar configurações" Command="{Binding SaveCommand}" HorizontalAlignment="Left" />
         </StackPanel>
       </Border>

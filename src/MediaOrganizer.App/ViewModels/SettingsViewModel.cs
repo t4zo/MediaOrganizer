@@ -86,6 +86,35 @@ public sealed partial class SettingsViewModel(
     [RelayCommand]
     private Task OpenOpenSubtitlesAsync() => shell.OpenUrlAsync(OpenSubtitlesKeyUrl);
 
+    public const string SubDlKeyUrl = "https://subdl.com/panel/api";
+
+    [ObservableProperty]
+    public partial bool SubDlEnabled { get; set; }
+
+    [ObservableProperty]
+    public partial string SubDlApiKey { get; set; } = "";
+
+    [ObservableProperty]
+    public partial string? SubDlStatus { get; private set; }
+
+    [RelayCommand]
+    private async Task TestSubDlAsync()
+    {
+        var draft = new SubDlSettings { Enabled = true, ApiKey = SubDlApiKey.Trim() };
+        if (string.IsNullOrEmpty(draft.ApiKey))
+        {
+            SubDlStatus = "Informe a chave da API.";
+            return;
+        }
+
+        SubDlStatus = "Testando...";
+        var provider = new SubDlProvider(httpFactory.CreateClient(SubDlProvider.ProviderName), () => draft);
+        SubDlStatus = await TestProviderAsync(provider.TestAsync);
+    }
+
+    [RelayCommand]
+    private Task OpenSubDlAsync() => shell.OpenUrlAsync(SubDlKeyUrl);
+
     private static async Task<string> TestProviderAsync(Func<CancellationToken, Task<string>> test)
     {
         try
@@ -149,6 +178,9 @@ public sealed partial class SettingsViewModel(
         OpenSubtitlesUsername = s.OpenSubtitles.Username ?? "";
         OpenSubtitlesPassword = s.OpenSubtitles.Password ?? "";
         OpenSubtitlesStatus = null;
+        SubDlEnabled = s.SubDl.Enabled;
+        SubDlApiKey = s.SubDl.ApiKey ?? "";
+        SubDlStatus = null;
         KeyStatus = null;
         KeyValid = null;
         return this;
@@ -193,6 +225,7 @@ public sealed partial class SettingsViewModel(
                 Username = Blank(OpenSubtitlesUsername),
                 Password = string.IsNullOrEmpty(OpenSubtitlesPassword) ? null : OpenSubtitlesPassword,
             };
+            s.SubDl = new SubDlSettings { Enabled = SubDlEnabled, ApiKey = Blank(SubDlApiKey) };
         });
         subtitleProviders.ResetDisabled();
         SubtitleLanguages = string.Join(", ", settings.Current.SubtitleLanguages);
