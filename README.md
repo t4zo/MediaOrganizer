@@ -10,6 +10,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/t4zo/MediaOrganizer/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/t4zo/MediaOrganizer/actions/workflows/ci.yml/badge.svg" /></a>
   <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10-512BD4" />
   <img alt="Avalonia UI 12" src="https://img.shields.io/badge/Avalonia_UI-12-8B44AC" />
   <img alt="Plataformas" src="https://img.shields.io/badge/plataformas-Windows%20%7C%20macOS%20%7C%20Linux-informational" />

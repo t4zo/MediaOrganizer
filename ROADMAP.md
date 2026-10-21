@@ -15,36 +15,36 @@ Legenda: ✅ concluído · 🚧 em andamento · 📋 planejado · 💡 ideia (a 
 - ✅ Lixo de release e pastas vazias para a Lixeira.
 - ✅ Executável único por sistema (Windows, macOS arm64/x64, Linux x64) e dados portáteis em `data/`.
 
-## v1.1 — Distribuição automática 📋
+## v1.1 — Distribuição automática, especiais e coleção 📋
 
-**Publicação de versões no GitHub (CI/CD)**
+Plano de implementação detalhado: [docs/plans/v1.1.md](docs/plans/v1.1.md).
+
+### Publicação de versões no GitHub (CI/CD)
 
 - Workflow do GitHub Actions que, a cada push/PR, compila e roda os testes em Windows, macOS e Linux.
-- Ao criar uma tag `vX.Y.Z`, gerar os executáveis com `build.sh`/`build.ps1` e publicá-los automaticamente em **Releases** (com `.zip` do `.app` do macOS para preservar permissões).
-- Changelog gerado a partir dos commits/PRs.
-- Opcional: assinatura de código (Authenticode no Windows; Developer ID + notarização no macOS) para eliminar os avisos de segurança na primeira execução.
+- Ao criar uma tag `vX.Y.Z`, gerar os executáveis e publicá-los automaticamente em **Releases** (com `.zip` do `.app` do macOS para preservar permissões).
+- Notas da versão geradas a partir dos commits/PRs.
 
-Critério de pronto: criar a tag `v1.1.0` publica os 4 executáveis sem passos manuais.
+### Episódios especiais (temporada 0)
 
-## v1.2 — Episódios especiais (temporada 0) 📋
+- Reconhecer especiais nos nomes (`S00E01`) e na pasta `Specials` (hoje ignorada por padrão).
+- Buscar títulos na temporada 0 do TMDb e nomear como `Série S00E01 - Título.ext`.
+- Identificar especiais sem número pelo título (ex.: "Pilot Extended"), sempre com confirmação na prévia.
+- Configuração para incluir ou ignorar especiais.
 
-- Reconhecer especiais nos nomes (`S00E01`, `Special`, `OVA`) e na pasta `Specials` (hoje ignorada por padrão).
-- Buscar títulos em `tv/{id}/season/0` no TMDb e nomear como `Série S00E01 - Título.ext`.
-- Correspondência por título quando o arquivo não tiver número (ex.: "Breaking Bad - Pilot Extended"), com confirmação na prévia.
-- Configuração para escolher: ignorar especiais (comportamento atual) ou incluí-los.
+### Detectar episódios faltando
 
-Critério de pronto: uma pasta `Specials` com arquivos de download é renomeada com os títulos oficiais da temporada 0.
-
-## v1.3 — Detectar episódios faltando 📋
-
-- Comparar os episódios presentes em cada série com a lista oficial do TMDb (temporadas e episódios já exibidos).
-- Nova tela **Coleção**: por série, temporadas completas/incompletas, episódios faltando e episódios ainda não lançados (com data de estreia).
+- Comparar os episódios presentes em cada série com a lista oficial do TMDb (só episódios já exibidos).
+- Nova tela **Coleção**: por série, temporadas completas/incompletas, episódios faltando e próximos lançamentos.
 - Filtro "só séries incompletas" e exportação da lista (texto/CSV).
-- Reaproveita o fingerprint: pastas sem alterações usam os dados em cache.
 
-Critério de pronto: a tela lista corretamente os episódios ausentes de uma série com temporadas parciais.
+**Critérios de pronto da v1.1**
 
-## v1.4 — Baixar legendas 📋
+- Criar a tag `v1.1.0` publica os 4 executáveis em Releases sem passos manuais.
+- Uma pasta `Specials` com arquivos de download é renomeada com os títulos oficiais da temporada 0.
+- A tela Coleção lista corretamente os episódios ausentes de uma série com temporadas parciais.
+
+## v1.2 — Baixar legendas 📋
 
 - Buscar legendas para episódios/filmes sem legenda no idioma desejado (ex.: `pt-BR`, `en`).
 - Provedor inicial: [OpenSubtitles](https://opensubtitles.stoplight.io/) (API com chave gratuita); busca por *hash* do arquivo e, em seguida, por título/temporada/episódio.
@@ -55,6 +55,7 @@ Critério de pronto: selecionar uma série e baixar as legendas `pt-BR` faltante
 
 ## Ideias a avaliar 💡
 
+- Assinatura de código (Authenticode no Windows; Developer ID + notarização no macOS) para eliminar os avisos de segurança na primeira execução.
 - Modo linha de comando (CLI) reutilizando o Core, para agendar a organização.
 - Monitorar pastas e organizar automaticamente arquivos novos (com notificação).
 - Gerar arquivos `.nfo` e baixar pôsteres para Kodi/Jellyfin/Plex.
