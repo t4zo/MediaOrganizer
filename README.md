@@ -127,7 +127,7 @@ Na próxima vez que você analisar a mesma pasta, as séries que não mudaram ap
 
 ### Coleção: episódios faltando
 
-Na tela **Coleção**, clique em **Verificar** (`F5`). Para cada série identificada, o app compara os episódios da pasta com a lista oficial do TMDb e mostra, por temporada, o que já foi exibido e está faltando — e os próximos lançamentos. Use **↻** para buscar novidades de séries em exibição e **Exportar** para salvar a lista em CSV (abre no Excel) ou texto.
+Na tela **Coleção**, clique em **Verificar** (`F5`). Para cada série identificada, o app compara os episódios da pasta com a lista oficial do TMDb e lista, por temporada, **todos** os episódios com a situação de cada um — na pasta, faltando ou ainda não exibido. A primeira temporada abre expandida; clique nas outras para ver os detalhes. Use **↻** para buscar novidades de séries em exibição e **Exportar** para salvar a lista em CSV (abre no Excel) ou texto.
 
 <img src="docs/images/collection.png" alt="Tela Coleção" width="640" />
 
