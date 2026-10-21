@@ -115,6 +115,35 @@ public sealed partial class SettingsViewModel(
     [RelayCommand]
     private Task OpenSubDlAsync() => shell.OpenUrlAsync(SubDlKeyUrl);
 
+    public const string SubSourceUrl = "https://subsource.net";
+
+    [ObservableProperty]
+    public partial bool SubSourceEnabled { get; set; }
+
+    [ObservableProperty]
+    public partial string SubSourceApiKey { get; set; } = "";
+
+    [ObservableProperty]
+    public partial string? SubSourceStatus { get; private set; }
+
+    [RelayCommand]
+    private async Task TestSubSourceAsync()
+    {
+        var draft = new SubSourceSettings { Enabled = true, ApiKey = SubSourceApiKey.Trim() };
+        if (string.IsNullOrEmpty(draft.ApiKey))
+        {
+            SubSourceStatus = "Informe a chave da API.";
+            return;
+        }
+
+        SubSourceStatus = "Testando...";
+        var provider = new SubSourceProvider(httpFactory.CreateClient(SubSourceProvider.ProviderName), () => draft);
+        SubSourceStatus = await TestProviderAsync(provider.TestAsync);
+    }
+
+    [RelayCommand]
+    private Task OpenSubSourceAsync() => shell.OpenUrlAsync(SubSourceUrl);
+
     private static async Task<string> TestProviderAsync(Func<CancellationToken, Task<string>> test)
     {
         try
@@ -181,6 +210,9 @@ public sealed partial class SettingsViewModel(
         SubDlEnabled = s.SubDl.Enabled;
         SubDlApiKey = s.SubDl.ApiKey ?? "";
         SubDlStatus = null;
+        SubSourceEnabled = s.SubSource.Enabled;
+        SubSourceApiKey = s.SubSource.ApiKey ?? "";
+        SubSourceStatus = null;
         KeyStatus = null;
         KeyValid = null;
         return this;
@@ -226,6 +258,7 @@ public sealed partial class SettingsViewModel(
                 Password = string.IsNullOrEmpty(OpenSubtitlesPassword) ? null : OpenSubtitlesPassword,
             };
             s.SubDl = new SubDlSettings { Enabled = SubDlEnabled, ApiKey = Blank(SubDlApiKey) };
+            s.SubSource = new SubSourceSettings { Enabled = SubSourceEnabled, ApiKey = Blank(SubSourceApiKey) };
         });
         subtitleProviders.ResetDisabled();
         SubtitleLanguages = string.Join(", ", settings.Current.SubtitleLanguages);

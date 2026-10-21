@@ -54,8 +54,12 @@ internal static class ServiceRegistration
         services.AddSingleton(sp => new SubDlProvider(
             sp.GetRequiredService<IHttpClientFactory>().CreateClient(SubDlProvider.ProviderName),
             () => sp.GetRequiredService<SettingsStore>().Current.SubDl, subtitleCache));
+        services.AddHttpClient(SubSourceProvider.ProviderName);
+        services.AddSingleton(sp => new SubSourceProvider(
+            sp.GetRequiredService<IHttpClientFactory>().CreateClient(SubSourceProvider.ProviderName),
+            () => sp.GetRequiredService<SettingsStore>().Current.SubSource, subtitleCache));
         services.AddSingleton(sp => new SubtitleProviderSet(
-            [sp.GetRequiredService<OpenSubtitlesProvider>(), sp.GetRequiredService<SubDlProvider>()],
+            [sp.GetRequiredService<OpenSubtitlesProvider>(), sp.GetRequiredService<SubDlProvider>(), sp.GetRequiredService<SubSourceProvider>()],
             sp.GetRequiredService<TimeProvider>()));
         services.AddSingleton<SubtitleAnalyzer>();
         services.AddSingleton<SubtitleDownloader>();
