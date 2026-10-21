@@ -63,6 +63,69 @@
       </Border>
 
       <Border Classes="card">
+        <StackPanel Spacing="12">
+          <TextBlock Classes="h3" Text="Legendas" />
+          <TextBlock Classes="muted" TextWrapping="Wrap"
+                     Text="Usado pela tela Legendas. Buscar não gasta a cota dos sites; só os downloads contam." />
+
+          <Grid ColumnDefinitions="*,*" ColumnSpacing="16" RowDefinitions="Auto,Auto" RowSpacing="10">
+            <StackPanel Spacing="6">
+              <TextBlock Text="Idiomas (em ordem de prioridade)" FontWeight="Medium" />
+              <TextBox Text="{Binding SubtitleLanguages}" PlaceholderText="pt-BR, en" />
+              <TextBlock Classes="caption" TextWrapping="Wrap" Text="Códigos separados por vírgula: pt-BR, en, es, fr..." />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="6">
+              <TextBlock Text="Quando faltar mais de um idioma" FontWeight="Medium" />
+              <ComboBox ItemsSource="{Binding LanguageModeOptions}" SelectedIndex="{Binding LanguageModeIndex}" HorizontalAlignment="Stretch" />
+            </StackPanel>
+            <StackPanel Grid.Row="1" Spacing="6">
+              <TextBlock Text="Legendas para surdos (SDH)" FontWeight="Medium" />
+              <ComboBox ItemsSource="{Binding HearingImpairedOptions}" SelectedIndex="{Binding HearingImpairedIndex}" HorizontalAlignment="Stretch" />
+            </StackPanel>
+          </Grid>
+
+          <CheckBox Content="Também baixar legendas forçadas (só as falas em outro idioma)" IsChecked="{Binding DownloadForcedSubtitles}" />
+          <CheckBox Content="Considerar as legendas embutidas no MKV como “já tem”" IsChecked="{Binding CheckEmbeddedSubtitles}" />
+          <CheckBox Content="Incluir legendas de tradução automática ou por IA" IsChecked="{Binding IncludeMachineTranslated}" />
+          <StackPanel Spacing="2">
+            <CheckBox Content="Ocultar os arquivos de legenda na pasta do vídeo" IsChecked="{Binding HideSubtitleFiles}" IsEnabled="{Binding CanHideFiles}" />
+            <TextBlock Classes="caption" Margin="28,0,0,0" TextWrapping="Wrap" IsVisible="{Binding CanHideFiles}"
+                       Text="O nome não muda, então os players continuam encontrando a legenda. Para vê-las: “Itens ocultos” no Explorer ou Cmd+Shift+. no Finder." />
+            <TextBlock Classes="caption" Margin="28,0,0,0" TextWrapping="Wrap" IsVisible="{Binding !CanHideFiles}"
+                       Text="No Linux não há como ocultar um arquivo sem renomeá-lo (o ponto no início faria os players não acharem a legenda)." />
+          </StackPanel>
+
+          <Separator />
+
+          <StackPanel Spacing="8">
+            <DockPanel>
+              <CheckBox DockPanel.Dock="Right" Content="Ativado" IsChecked="{Binding OpenSubtitlesEnabled}" />
+              <TextBlock Text="OpenSubtitles.com" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </DockPanel>
+            <TextBlock Classes="caption" TextWrapping="Wrap"
+                       Text="Melhor acervo em pt-BR e busca pelo hash do arquivo (sincronia garantida). Sem login, a cota diária é pequena; com uma conta gratuita, ela aumenta." />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+              <TextBox Text="{Binding OpenSubtitlesApiKey}" PasswordChar="•" PlaceholderText="Chave da API (Api-Key)" />
+              <Button Grid.Column="1" Classes="subtle" Command="{Binding OpenOpenSubtitlesCommand}" ToolTip.Tip="Criar uma chave no site do OpenSubtitles">
+                <PathIcon Data="{x:Static app:Icons.External}" />
+              </Button>
+            </Grid>
+            <Grid ColumnDefinitions="*,*,Auto" ColumnSpacing="8">
+              <TextBox Text="{Binding OpenSubtitlesUsername}" PlaceholderText="Usuário (opcional)" />
+              <TextBox Grid.Column="1" Text="{Binding OpenSubtitlesPassword}" PasswordChar="•" PlaceholderText="Senha (opcional)" />
+              <Button Grid.Column="2" Content="Testar" Command="{Binding TestOpenSubtitlesCommand}" />
+            </Grid>
+            <TextBlock Classes="caption" Text="{Binding OpenSubtitlesStatus}" TextWrapping="Wrap"
+                       IsVisible="{Binding OpenSubtitlesStatus, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <TextBlock Classes="caption" TextWrapping="Wrap"
+                       Text="A senha fica salva em texto puro em settings.json (na pasta de dados), como a chave do TMDb." />
+          </StackPanel>
+
+          <Button Classes="accent" Content="Salvar configurações" Command="{Binding SaveCommand}" HorizontalAlignment="Left" />
+        </StackPanel>
+      </Border>
+
+      <Border Classes="card">
         <StackPanel Spacing="10">
           <TextBlock Classes="h3" Text="Dados do aplicativo" />
           <TextBlock Classes="muted" TextWrapping="Wrap"

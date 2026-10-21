@@ -35,6 +35,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
     [
         new(Page.Organize, "Organizar", Icons.Folder),
         new(Page.Collection, "Coleção", Icons.Checklist),
+        new(Page.Subtitles, "Legendas", Icons.Subtitle),
         new(Page.History, "Histórico", Icons.History),
         new(Page.Settings, "Configurações", Icons.Settings),
     ];
@@ -55,6 +56,7 @@ public sealed partial class MainWindowViewModel : ObservableObject
         CurrentPage = value.Page switch
         {
             Page.Collection => _services.GetRequiredService<CollectionViewModel>(),
+            Page.Subtitles => _services.GetRequiredService<SubtitlesViewModel>(),
             Page.History => _services.GetRequiredService<HistoryViewModel>().Refreshed(),
             Page.Settings => _services.GetRequiredService<SettingsViewModel>().Reloaded(),
             _ => _services.GetRequiredService<OrganizeViewModel>(),

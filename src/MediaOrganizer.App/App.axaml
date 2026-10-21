@@ -10,6 +10,7 @@
   <Application.DataTemplates>
     <DataTemplate DataType="vm:OrganizeViewModel"><views:OrganizeView /></DataTemplate>
     <DataTemplate DataType="vm:CollectionViewModel"><views:CollectionView /></DataTemplate>
+    <DataTemplate DataType="vm:SubtitlesViewModel"><views:SubtitlesView /></DataTemplate>
     <DataTemplate DataType="vm:HistoryViewModel"><views:HistoryView /></DataTemplate>
     <DataTemplate DataType="vm:SettingsViewModel"><views:SettingsView /></DataTemplate>
     <DataTemplate DataType="vm:OnboardingViewModel"><views:OnboardingView /></DataTemplate>

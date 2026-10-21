@@ -3,13 +3,105 @@ using CommunityToolkit.Mvvm.Input;
 using MediaOrganizer.App.Services;
 using MediaOrganizer.Core.Metadata;
 using MediaOrganizer.Core.State;
+using MediaOrganizer.Core.Subtitles;
+using MediaOrganizer.Core.Subtitles.Providers;
 
 namespace MediaOrganizer.App.ViewModels;
 
 public sealed partial class SettingsViewModel(
-    ShellServices shell, SettingsStore settings, ProcessedStore processed, MetadataCache cache, DataPaths paths, TmdbClient tmdb)
+    ShellServices shell, SettingsStore settings, ProcessedStore processed, MetadataCache cache, DataPaths paths, TmdbClient tmdb,
+    SubtitleProviderSet subtitleProviders, IHttpClientFactory httpFactory)
     : ObservableObject
 {
+    public const string OpenSubtitlesKeyUrl = "https://www.opensubtitles.com/consumers";
+
+    // ---- Legendas ----
+
+    /// <summary>Idiomas em ordem de prioridade, separados por vírgula ("pt-BR, en").</summary>
+    [ObservableProperty]
+    public partial string SubtitleLanguages { get; set; } = "";
+
+    /// <summary>0 = todos os idiomas da lista; 1 = só o primeiro disponível.</summary>
+    [ObservableProperty]
+    public partial int LanguageModeIndex { get; set; }
+
+    /// <summary>0 = evitar SDH; 1 = preferir SDH; 2 = tanto faz.</summary>
+    [ObservableProperty]
+    public partial int HearingImpairedIndex { get; set; }
+
+    [ObservableProperty]
+    public partial bool DownloadForcedSubtitles { get; set; }
+
+    [ObservableProperty]
+    public partial bool CheckEmbeddedSubtitles { get; set; }
+
+    [ObservableProperty]
+    public partial bool IncludeMachineTranslated { get; set; }
+
+    [ObservableProperty]
+    public partial bool HideSubtitleFiles { get; set; }
+
+    public bool CanHideFiles => HiddenFile.IsSupported;
+
+    public IReadOnlyList<string> LanguageModeOptions { get; } = ["Baixar todos os idiomas da lista", "Só o primeiro disponível (os seguintes são alternativa)"];
+
+    public IReadOnlyList<string> HearingImpairedOptions { get; } = ["Evitar legendas para surdos (SDH)", "Preferir legendas SDH", "Tanto faz"];
+
+    [ObservableProperty]
+    public partial bool OpenSubtitlesEnabled { get; set; }
+
+    [ObservableProperty]
+    public partial string OpenSubtitlesApiKey { get; set; } = "";
+
+    [ObservableProperty]
+    public partial string OpenSubtitlesUsername { get; set; } = "";
+
+    [ObservableProperty]
+    public partial string OpenSubtitlesPassword { get; set; } = "";
+
+    [ObservableProperty]
+    public partial string? OpenSubtitlesStatus { get; private set; }
+
+    [RelayCommand]
+    private async Task TestOpenSubtitlesAsync()
+    {
+        var draft = new OpenSubtitlesSettings
+        {
+            Enabled = true,
+            ApiKey = OpenSubtitlesApiKey.Trim(),
+            Username = OpenSubtitlesUsername.Trim(),
+            Password = OpenSubtitlesPassword,
+        };
+        if (string.IsNullOrEmpty(draft.ApiKey))
+        {
+            OpenSubtitlesStatus = "Informe a chave da API.";
+            return;
+        }
+
+        OpenSubtitlesStatus = "Testando...";
+        using var provider = new OpenSubtitlesProvider(httpFactory.CreateClient(OpenSubtitlesProvider.ProviderName), () => draft, () => false);
+        OpenSubtitlesStatus = await TestProviderAsync(provider.TestAsync);
+    }
+
+    [RelayCommand]
+    private Task OpenOpenSubtitlesAsync() => shell.OpenUrlAsync(OpenSubtitlesKeyUrl);
+
+    private static async Task<string> TestProviderAsync(Func<CancellationToken, Task<string>> test)
+    {
+        try
+        {
+            return await test(CancellationToken.None);
+        }
+        catch (SubtitleProviderException e)
+        {
+            return e.Message;
+        }
+        catch (Exception e) when (e is HttpRequestException or System.Text.Json.JsonException)
+        {
+            return $"Sem conexão: {e.Message}";
+        }
+    }
+
     [ObservableProperty]
     public partial string ApiKey { get; set; } = "";
 
@@ -45,6 +137,18 @@ public sealed partial class SettingsViewModel(
         IgnoredFolders = string.Join(Environment.NewLine, s.IgnoredFolders);
         JunkPatterns = string.Join(Environment.NewLine, s.JunkPatterns);
         ProcessedCount = processed.Count;
+        SubtitleLanguages = string.Join(", ", s.SubtitleLanguages);
+        LanguageModeIndex = (int)s.SubtitleLanguageMode;
+        HearingImpairedIndex = (int)s.SubtitleHearingImpaired;
+        DownloadForcedSubtitles = s.DownloadForcedSubtitles;
+        CheckEmbeddedSubtitles = s.CheckEmbeddedSubtitles;
+        IncludeMachineTranslated = s.IncludeMachineTranslated;
+        HideSubtitleFiles = s.HideSubtitleFiles;
+        OpenSubtitlesEnabled = s.OpenSubtitles.Enabled;
+        OpenSubtitlesApiKey = s.OpenSubtitles.ApiKey ?? "";
+        OpenSubtitlesUsername = s.OpenSubtitles.Username ?? "";
+        OpenSubtitlesPassword = s.OpenSubtitles.Password ?? "";
+        OpenSubtitlesStatus = null;
         KeyStatus = null;
         KeyValid = null;
         return this;
@@ -75,7 +179,23 @@ public sealed partial class SettingsViewModel(
             s.IncludeSpecials = IncludeSpecials;
             s.IgnoredFolders = SplitLines(IgnoredFolders);
             s.JunkPatterns = SplitLines(JunkPatterns);
+            s.SubtitleLanguages = [.. Core.Subtitles.SubtitleLanguages.NormalizeList(SplitLines(SubtitleLanguages))];
+            s.SubtitleLanguageMode = (SubtitleLanguageMode)Math.Clamp(LanguageModeIndex, 0, 1);
+            s.SubtitleHearingImpaired = (HearingImpairedPreference)Math.Clamp(HearingImpairedIndex, 0, 2);
+            s.DownloadForcedSubtitles = DownloadForcedSubtitles;
+            s.CheckEmbeddedSubtitles = CheckEmbeddedSubtitles;
+            s.IncludeMachineTranslated = IncludeMachineTranslated;
+            s.HideSubtitleFiles = HideSubtitleFiles;
+            s.OpenSubtitles = new OpenSubtitlesSettings
+            {
+                Enabled = OpenSubtitlesEnabled,
+                ApiKey = Blank(OpenSubtitlesApiKey),
+                Username = Blank(OpenSubtitlesUsername),
+                Password = string.IsNullOrEmpty(OpenSubtitlesPassword) ? null : OpenSubtitlesPassword,
+            };
         });
+        subtitleProviders.ResetDisabled();
+        SubtitleLanguages = string.Join(", ", settings.Current.SubtitleLanguages);
         shell.ShowToast("Configurações salvas.");
     }
 
@@ -104,6 +224,8 @@ public sealed partial class SettingsViewModel(
         ProcessedCount = 0;
         shell.ShowToast("Registro de pastas processadas apagado.");
     }
+
+    private static string? Blank(string text) => string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
     private static List<string> SplitLines(string text) =>
         [.. text.Split(['\r', '\n', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct(StringComparer.OrdinalIgnoreCase)];

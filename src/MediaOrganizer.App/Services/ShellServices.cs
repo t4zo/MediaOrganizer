@@ -9,6 +9,7 @@ public enum Page
 {
     Organize,
     Collection,
+    Subtitles,
     History,
     Settings,
 }
