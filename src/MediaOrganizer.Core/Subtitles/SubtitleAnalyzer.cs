@@ -101,7 +101,8 @@ public sealed class SubtitleAnalyzer(TmdbClient tmdb, SettingsStore settings, Su
         var items = current.SubtitleLanguageMode == SubtitleLanguageMode.FirstAvailable
             ? FirstAvailable(state, candidates, current.SubtitleHearingImpaired, query.ReleaseName, error)
             : [.. state.Missing.Select(l => Item(state, l, candidates, current.SubtitleHearingImpaired, query.ReleaseName, error))];
-        return new VideoSubtitlePlan(state, items, query);
+        var wanted = SubtitleInventory.WantedFrom(current).ToList();
+        return new VideoSubtitlePlan(state, [.. items.Select(i => i with { Priority = wanted.IndexOf(i.Wanted) })], query);
     }
 
     /// <summary>

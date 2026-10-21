@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using MediaOrganizer.App.Services;
@@ -64,8 +65,13 @@ public sealed partial class SubtitlesViewModel : ObservableObject
     public IReadOnlyList<string> FilterOptions { get; } = ["Todas", "Com legendas faltando", "Completas", "Sem correspondência"];
 
     /// <summary>"Todos os idiomas" + os idiomas das configurações.</summary>
-    public IReadOnlyList<string> LanguageOptions =>
-        ["Todos os idiomas", .. SubtitleLanguages.NormalizeList(_settings.Current.SubtitleLanguages)];
+    public IReadOnlyList<string> LanguageOptions { get; private set; } = ["Todos os idiomas"];
+
+    private void RefreshLanguageOptions()
+    {
+        LanguageOptions = ["Todos os idiomas", .. SubtitleLanguages.NormalizeList(_settings.Current.SubtitleLanguages)];
+        OnPropertyChanged(nameof(LanguageOptions));
+    }
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(AnalyzeCommand), nameof(RefreshAllCommand))]
@@ -166,6 +172,13 @@ public sealed partial class SubtitlesViewModel : ObservableObject
 
     partial void OnLanguageIndexChanged(int value)
     {
+        // A View é recriada ao trocar de página; o ComboBox que sai devolve -1.
+        if (value < 0)
+        {
+            Dispatcher.UIThread.Post(() => LanguageIndex = 0);
+            return;
+        }
+
         var code = value <= 0 ? null : LanguageOptions.ElementAtOrDefault(value);
         foreach (var folder in Folders) folder.ApplyLanguageFilter(code);
     }
@@ -190,7 +203,7 @@ public sealed partial class SubtitlesViewModel : ObservableObject
     {
         var previous = SelectedFolder?.FolderName;
         Clear();
-        OnPropertyChanged(nameof(LanguageOptions));
+        RefreshLanguageOptions();
         LanguageIndex = 0;
         IsAnalyzing = true;
         Progress = 0;

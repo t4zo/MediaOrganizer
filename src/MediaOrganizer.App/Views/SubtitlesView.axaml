@@ -225,7 +225,7 @@
                                   </StackPanel>
                                   <StackPanel Grid.Column="2" Spacing="4">
                                     <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding SelectedOption}" IsVisible="{Binding HasOptions}"
-                                              HorizontalAlignment="Stretch" IsEnabled="{Binding HasAlternatives}">
+                                              HorizontalAlignment="Stretch">
                                       <ComboBox.ItemTemplate>
                                         <DataTemplate x:DataType="vm:CandidateOption">
                                           <TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" />

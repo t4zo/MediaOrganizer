@@ -27,6 +27,9 @@ public sealed record SubtitleItem(
 {
     public SubtitleCandidate? Best => Candidates.Count > 0 ? Candidates[0] : null;
 
+    /// <summary>Posição do idioma na lista das configurações (0 = mais importante).</summary>
+    public int Priority { get; init; }
+
     /// <summary>Arquivo final de um candidato: "&lt;vídeo&gt;.pt-BR[.forced|.sdh].srt", na pasta do vídeo.</summary>
     public static string TargetPath(string videoPath, SubtitleCandidate candidate) =>
         Path.Combine(Path.GetDirectoryName(videoPath)!,
@@ -63,7 +66,7 @@ public sealed record FolderSubtitlePlan(
 
     /// <summary>Faltantes por idioma, na ordem das configurações: ("pt-BR", 8), ("en", 3).</summary>
     public IReadOnlyList<(string Language, int Count)> MissingByLanguage =>
-        [.. Items.GroupBy(i => i.Wanted.ToString()).Select(g => (g.Key, g.Count()))];
+        [.. Items.GroupBy(i => i.Wanted.ToString()).OrderBy(g => g.Min(i => i.Priority)).Select(g => (g.Key, g.Count()))];
 
     public static FolderSubtitlePlan Failed(LibraryFolder folder, FolderSubtitleStatus status, string message, MediaCandidate? match = null) =>
         new(folder, match, [], status, message);
