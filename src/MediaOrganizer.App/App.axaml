@@ -9,6 +9,7 @@
   <!-- Cada ViewModel de página/diálogo é exibido pela View correspondente. -->
   <Application.DataTemplates>
     <DataTemplate DataType="vm:OrganizeViewModel"><views:OrganizeView /></DataTemplate>
+    <DataTemplate DataType="vm:CollectionViewModel"><views:CollectionView /></DataTemplate>
     <DataTemplate DataType="vm:HistoryViewModel"><views:HistoryView /></DataTemplate>
     <DataTemplate DataType="vm:SettingsViewModel"><views:SettingsView /></DataTemplate>
     <DataTemplate DataType="vm:OnboardingViewModel"><views:OnboardingView /></DataTemplate>

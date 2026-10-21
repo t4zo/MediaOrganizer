@@ -52,7 +52,7 @@ public sealed partial class MediaMatcher(TmdbClient tmdb)
     public async Task<MediaCandidate?> GetDetailsAsync(MediaKind kind, int id, CancellationToken ct)
     {
         if (kind == MediaKind.Series)
-            return await tmdb.GetTvAsync(id, LanguagePolicy.English, ct).ConfigureAwait(false) is { } tv ? MediaCandidate.From(tv) : null;
+            return await tmdb.GetTvAsync(id, LanguagePolicy.English, ct: ct).ConfigureAwait(false) is { } tv ? MediaCandidate.From(tv) : null;
         return await tmdb.GetMovieAsync(id, LanguagePolicy.English, ct).ConfigureAwait(false) is { } movie ? MediaCandidate.From(movie) : null;
     }
 

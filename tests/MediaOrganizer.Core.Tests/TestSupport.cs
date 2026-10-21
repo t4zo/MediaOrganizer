@@ -81,6 +81,17 @@ public sealed class FakeTmdb : HttpMessageHandler
         Route($"tv/{id}/season/{season}?language={language}",
             $$"""{"season_number":{{season}},"episodes":[{{string.Join(',', episodes.Select(e => $$"""{"episode_number":{{e.Episode}},"name":"{{e.Name}}"}"""))}}]}""");
 
+    /// <summary>Série com a lista de temporadas (usada pela Coleção).</summary>
+    public FakeTmdb ShowWithSeasons(int id, string name, string language, params int[] seasons) =>
+        Route($"tv/{id}?language=en-US",
+            $$"""{"id":{{id}},"name":"{{name}}","original_name":"{{name}}","original_language":"{{language}}","first_air_date":"2017-12-01","number_of_seasons":{{seasons.Count(s => s > 0)}},"seasons":[{{string.Join(',', seasons.Select(s => $$"""{"season_number":{{s}},"episode_count":0}"""))}}]}""");
+
+    /// <summary>Temporada com datas de exibição (null = sem data).</summary>
+    public FakeTmdb SeasonWithDates(int id, int season, string language, params (int Episode, string Name, string? AirDate)[] episodes) =>
+        Route($"tv/{id}/season/{season}?language={language}",
+            $$"""{"season_number":{{season}},"episodes":[{{string.Join(',', episodes.Select(e =>
+                $$"""{"episode_number":{{e.Episode}},"name":"{{e.Name}}","air_date":{{(e.AirDate is null ? "null" : $"\"{e.AirDate}\"")}}}"""))}}]}""");
+
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var pathAndQuery = request.RequestUri!.PathAndQuery.TrimStart('/');

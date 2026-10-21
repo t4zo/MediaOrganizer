@@ -45,11 +45,13 @@ public sealed class TmdbClient
         return page?.Results.Select(MediaCandidate.From).ToList() ?? [];
     }
 
-    public Task<TvDetails?> GetTvAsync(int id, string language, CancellationToken ct = default) =>
-        GetAsync($"tv/{id}", [("language", language)], TmdbJsonContext.Default.TvDetails, ct);
+    /// <param name="refresh">Ignora o cache e grava a resposta nova (séries em exibição).</param>
+    public Task<TvDetails?> GetTvAsync(int id, string language, bool refresh = false, CancellationToken ct = default) =>
+        GetAsync($"tv/{id}", [("language", language)], TmdbJsonContext.Default.TvDetails, ct, refresh);
 
-    public Task<TvSeason?> GetSeasonAsync(int id, int season, string language, CancellationToken ct = default) =>
-        GetAsync($"tv/{id}/season/{season}", [("language", language)], TmdbJsonContext.Default.TvSeason, ct);
+    /// <param name="refresh">Ignora o cache e grava a resposta nova (séries em exibição).</param>
+    public Task<TvSeason?> GetSeasonAsync(int id, int season, string language, bool refresh = false, CancellationToken ct = default) =>
+        GetAsync($"tv/{id}/season/{season}", [("language", language)], TmdbJsonContext.Default.TvSeason, ct, refresh);
 
     public Task<MovieDetails?> GetMovieAsync(int id, string language, CancellationToken ct = default) =>
         GetAsync($"movie/{id}", [("language", language)], TmdbJsonContext.Default.MovieDetails, ct);
@@ -62,11 +64,12 @@ public sealed class TmdbClient
         return response.IsSuccessStatusCode;
     }
 
-    private async Task<T?> GetAsync<T>(string path, (string Name, string? Value)[] query, JsonTypeInfo<T> typeInfo, CancellationToken ct)
+    private async Task<T?> GetAsync<T>(string path, (string Name, string? Value)[] query, JsonTypeInfo<T> typeInfo, CancellationToken ct,
+        bool refresh = false)
         where T : class
     {
         var cacheKey = path + "?" + BuildQuery(query);
-        if (_cache?.Get(cacheKey) is { } cached) return JsonSerializer.Deserialize(cached, typeInfo);
+        if (!refresh && _cache?.Get(cacheKey) is { } cached) return JsonSerializer.Deserialize(cached, typeInfo);
 
         var apiKey = _apiKey()?.Trim();
         if (string.IsNullOrEmpty(apiKey))

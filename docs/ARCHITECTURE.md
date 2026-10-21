@@ -8,10 +8,12 @@
 └───────────────────────────────────────┬──────────────────────────────────────────────┘
                                         │ usa apenas a API pública do Core
 ┌──────────────────────────── MediaOrganizer.Core (sem UI) ───────────────────────────┐
-│ LibraryAnalyzer (fachada)                                                            │
+│ LibraryAnalyzer (fachada da organização) · CollectionAnalyzer (fachada da Coleção)   │
+│   ├─ Collection: CollectionAnalyzer, CollectionExporter, SeriesReport/SeasonReport   │
 │   ├─ Scanning:  LibraryScanner, JunkDetector, FolderFingerprint                      │
 │   ├─ Parsing:   ReleaseNameParser                                                    │
-│   ├─ Metadata:  TmdbClient, MetadataCache, MediaMatcher, LanguagePolicy              │
+│   ├─ Metadata:  TmdbClient, MetadataCache, MediaMatcher, LanguagePolicy,             │
+│   │             EpisodeTitles                                                        │
 │   ├─ Naming:    FileNameSanitizer, NameFormatter                                     │
 │   ├─ Planning:  RenamePlanner, SubtitleMatcher, ConflictDetector                     │
 │   ├─ Execution: RenameExecutor, HistoryStore, RecycleBin                             │
@@ -48,7 +50,20 @@ LibraryFolder ──▶ Match (TMDb) ──▶ Plan (nomes + legendas + conflito
 6. **Apply** (`RenameExecutor`): grava o journal, move os arquivos, registra o resultado; `LibraryAnalyzer.RecordApplied` grava correspondência e fingerprint.
 7. **Undo** (`UndoService` → `RenameExecutor.Undo`): reverte pelo journal e invalida os fingerprints.
 
-`LibraryAnalyzer.AnalyzeAsync` processa até 4 pastas em paralelo e devolve cada plano assim que fica pronto (`IAsyncEnumerable` + `Channel`), para a lista ir aparecendo na tela.
+`LibraryAnalyzer.AnalyzeAsync` processa até 4 pastas em paralelo e devolve cada plano assim que fica pronto (`AsyncParallel.StreamAsync`: `IAsyncEnumerable` + `Channel`), para a lista ir aparecendo na tela.
+
+## Fluxo da Coleção
+
+```
+Scan (mesmas regras) ──▶ correspondência memorizada? ──não──▶ NoMatch (sem rede)
+                                   │ sim
+                                   ▼
+          tv/{id} (temporadas) ──▶ season/{n} (episódios + air_date) ──▶ SeriesReport
+                                                                            │
+                                     CollectionViewModel (lista + detalhe) ◀┘──▶ CollectionExporter (CSV/TXT)
+```
+
+`CollectionAnalyzer` reutiliza `LibraryScanner`, `ReleaseNameParser`, `EpisodeTitles` (títulos na política de idioma) e o `TmdbClient` com cache; "hoje" vem de um `TimeProvider` injetado (data fixa nos testes). A identificação de séries continua centralizada nas correspondências do `SettingsStore`, compartilhadas com a tela Organizar.
 
 ## Decisões
 
@@ -85,4 +100,4 @@ MediaOrganizer/
 
 - **Nova regra de nomeação**: altere `NameFormatter`/`FileNameSanitizer`, adicione casos em `docs/test-cases.json` e **incremente `FolderFingerprint.RulesVersion`** para que pastas já processadas sejam reavaliadas.
 - **Nova fonte de metadados** (ex.: TVmaze): crie um cliente com a mesma forma de `TmdbClient` e use-o em `MediaMatcher`/`RenamePlanner`.
-- **Nova funcionalidade de biblioteca** (ex.: baixar legendas, detectar episódios faltando): acrescente um serviço no Core consumindo `LibraryScanner`/`LibraryFolder` e uma nova página na App (ViewModel + View + item em `MainWindowViewModel.NavItems` + `DataTemplate` em `App.axaml`).
+- **Nova funcionalidade de biblioteca** (ex.: baixar legendas; a Coleção é um exemplo completo): acrescente um serviço no Core consumindo `LibraryScanner`/`LibraryFolder` e uma nova página na App (ViewModel + View + item em `MainWindowViewModel.NavItems` + `DataTemplate` em `App.axaml`).
