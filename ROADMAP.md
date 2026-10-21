@@ -15,28 +15,28 @@ Legenda: ✅ concluído · 🚧 em andamento · 📋 planejado · 💡 ideia (a 
 - ✅ Lixo de release e pastas vazias para a Lixeira.
 - ✅ Executável único por sistema (Windows, macOS arm64/x64, Linux x64) e dados portáteis em `data/`.
 
-## v1.1 — Distribuição automática, especiais e coleção 📋
+## v1.1 — Distribuição automática, especiais e coleção 🚧
 
-Plano de implementação detalhado: [docs/plans/v1.1.md](docs/plans/v1.1.md).
+Implementada; falta publicar a tag `v1.1.0` (validar antes com `v1.1.0-rc.1`). Plano: [docs/plans/v1.1.md](docs/plans/v1.1.md).
 
 ### Publicação de versões no GitHub (CI/CD)
 
-- Workflow do GitHub Actions que, a cada push/PR, compila e roda os testes em Windows, macOS e Linux.
-- Ao criar uma tag `vX.Y.Z`, gerar os executáveis e publicá-los automaticamente em **Releases** (com `.zip` do `.app` do macOS para preservar permissões).
-- Notas da versão geradas a partir dos commits/PRs.
+- ✅ Workflow do GitHub Actions que, a cada push/PR, compila e roda os testes em Windows, macOS e Linux.
+- ✅ Ao criar uma tag `vX.Y.Z`, gerar os executáveis e publicá-los automaticamente em **Releases** (com `.zip` do `.app` do macOS para preservar permissões).
+- ✅ Notas da versão geradas a partir dos commits/PRs.
 
 ### Episódios especiais (temporada 0)
 
-- Reconhecer especiais nos nomes (`S00E01`) e na pasta `Specials` (hoje ignorada por padrão).
-- Buscar títulos na temporada 0 do TMDb e nomear como `Série S00E01 - Título.ext`.
-- Identificar especiais sem número pelo título (ex.: "Pilot Extended"), sempre com confirmação na prévia.
-- Configuração para incluir ou ignorar especiais.
+- ✅ Reconhecer especiais nos nomes (`S00E01`) e nas pastas `Specials`/`Season 00`.
+- ✅ Buscar títulos na temporada 0 do TMDb e nomear como `Série S00E01 - Título.ext`.
+- ✅ Identificar especiais sem número pelo título (ex.: "Pilot Extended"), sempre com confirmação na prévia.
+- ✅ Configuração para incluir ou ignorar especiais.
 
 ### Detectar episódios faltando
 
-- Comparar os episódios presentes em cada série com a lista oficial do TMDb (só episódios já exibidos).
-- Nova tela **Coleção**: por série, temporadas completas/incompletas, episódios faltando e próximos lançamentos.
-- Filtro "só séries incompletas" e exportação da lista (texto/CSV).
+- ✅ Comparar os episódios presentes em cada série com a lista oficial do TMDb (só episódios já exibidos).
+- ✅ Nova tela **Coleção**: por série, temporadas completas/incompletas, episódios faltando e próximos lançamentos.
+- ✅ Filtros e exportação da lista (texto/CSV).
 
 **Critérios de pronto da v1.1**
 
