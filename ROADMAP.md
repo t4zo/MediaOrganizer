@@ -15,9 +15,9 @@ Legenda: ✅ concluído · 🚧 em andamento · 📋 planejado · 💡 ideia (a 
 - ✅ Lixo de release e pastas vazias para a Lixeira.
 - ✅ Executável único por sistema (Windows, macOS arm64/x64, Linux x64) e dados portáteis em `data/`.
 
-## v1.1 — Distribuição automática, especiais e coleção 🚧
+## v1.1 — Distribuição automática, especiais e coleção ✅
 
-Implementada; falta publicar a tag `v1.1.0` (validar antes com `v1.1.0-rc.1`). Plano: [docs/plans/v1.1.md](docs/plans/v1.1.md).
+Publicada em [v1.1.0](https://github.com/t4zo/MediaOrganizer/releases/tag/v1.1.0). Plano: [docs/plans/v1.1.md](docs/plans/v1.1.md).
 
 ### Publicação de versões no GitHub (CI/CD)
 
