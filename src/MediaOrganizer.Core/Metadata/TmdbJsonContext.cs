@@ -8,4 +8,5 @@ namespace MediaOrganizer.Core.Metadata;
 [JsonSerializable(typeof(TvDetails))]
 [JsonSerializable(typeof(TvSeason))]
 [JsonSerializable(typeof(MovieDetails))]
+[JsonSerializable(typeof(ExternalIds))]
 internal sealed partial class TmdbJsonContext : JsonSerializerContext;

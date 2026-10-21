@@ -56,6 +56,10 @@ public sealed class TmdbClient
     public Task<MovieDetails?> GetMovieAsync(int id, string language, CancellationToken ct = default) =>
         GetAsync($"movie/{id}", [("language", language)], TmdbJsonContext.Default.MovieDetails, ct);
 
+    /// <summary>IMDb/TVDB de uma série (para os sites de legenda).</summary>
+    public Task<ExternalIds?> GetTvExternalIdsAsync(int id, CancellationToken ct = default) =>
+        GetAsync($"tv/{id}/external_ids", [], TmdbJsonContext.Default.ExternalIds, ct);
+
     /// <summary>Valida a chave fazendo uma chamada leve. Retorna <c>false</c> se a chave for recusada.</summary>
     public async Task<bool> ValidateKeyAsync(string apiKey, CancellationToken ct = default)
     {

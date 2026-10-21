@@ -121,6 +121,9 @@ public static partial class SubtitleMatcher
         return null;
     }
 
+    /// <summary>Código ISO 639-1 de um nome/código de idioma ("English", "eng" → "en"), ou <c>null</c>.</summary>
+    internal static string? LanguageCodeFor(string token) => LanguageCodes.TryGetValue(token, out var code) ? code : null;
+
     internal static (string? Language, string? Flag) DetectLanguage(string tokensText)
     {
         string? language = PortugueseBrazilRegex().IsMatch(tokensText) ? "pt-BR" : null;
