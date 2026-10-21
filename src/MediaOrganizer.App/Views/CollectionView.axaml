@@ -1,0 +1,248 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MediaOrganizer.App.ViewModels"
+             xmlns:app="using:MediaOrganizer.App"
+             x:Class="MediaOrganizer.App.Views.CollectionView"
+             x:DataType="vm:CollectionViewModel">
+
+  <Grid RowDefinitions="Auto,Auto,*" Margin="24,20,24,20">
+
+    <!-- Cabeçalho -->
+    <StackPanel Spacing="12" Margin="0,0,0,14">
+      <StackPanel>
+        <TextBlock Classes="h1" Text="Coleção" />
+        <TextBlock Classes="muted" Text="Compara suas séries com a lista oficial do TMDb e mostra os episódios já exibidos que estão faltando." />
+      </StackPanel>
+
+      <Border Classes="card" Padding="12">
+        <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="10">
+          <PathIcon Data="{x:Static app:Icons.Folder}" Classes="muted" Margin="4,0" />
+          <TextBox Grid.Column="1" Text="{Binding LibraryPath}" PlaceholderText="Pasta de séries (ex.: E:\Series)" IsEnabled="{Binding !IsAnalyzing}" />
+          <Button Grid.Column="2" Content="Escolher..." Command="{Binding ChooseFolderCommand}" IsEnabled="{Binding !IsAnalyzing}" />
+          <Button Grid.Column="3" Classes="accent" Command="{Binding AnalyzeCommand}" IsVisible="{Binding !IsAnalyzing}"
+                  HotKey="F5" ToolTip.Tip="Verificar coleção (F5)" MinWidth="110">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <PathIcon Data="{x:Static app:Icons.Checklist}" />
+              <TextBlock Text="Verificar" />
+            </StackPanel>
+          </Button>
+          <Button Grid.Column="3" Command="{Binding AnalyzeCancelCommand}" IsVisible="{Binding IsAnalyzing}" Content="Cancelar" MinWidth="110" />
+          <Button Grid.Column="4" Classes="subtle" Command="{Binding RefreshAllCommand}" IsEnabled="{Binding !IsAnalyzing}"
+                  ToolTip.Tip="Atualizar do TMDb ignorando o cache (novos episódios de séries em exibição)">
+            <PathIcon Data="{x:Static app:Icons.Refresh}" />
+          </Button>
+          <Button Grid.Column="5" Classes="subtle" IsEnabled="{Binding HasResults}" ToolTip.Tip="Exportar episódios faltando">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <PathIcon Data="{x:Static app:Icons.Download}" />
+              <TextBlock Text="Exportar" />
+            </StackPanel>
+            <Button.Flyout>
+              <MenuFlyout>
+                <MenuItem Header="Planilha (CSV)" Command="{Binding ExportCsvCommand}" />
+                <MenuItem Header="Texto (TXT)" Command="{Binding ExportTextCommand}" />
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+        </Grid>
+      </Border>
+    </StackPanel>
+
+    <!-- Progresso -->
+    <StackPanel Grid.Row="1" Spacing="6" IsVisible="{Binding IsAnalyzing}" Margin="0,0,0,14">
+      <ProgressBar Value="{Binding Progress}" Maximum="100" Height="4" MinHeight="4" />
+      <TextBlock Classes="caption" Text="{Binding ProgressText}" />
+    </StackPanel>
+
+    <!-- Estado vazio -->
+    <Border Grid.Row="2" Classes="card" IsVisible="{Binding !HasResults}">
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10" MaxWidth="460" IsVisible="{Binding !IsAnalyzing}">
+        <PathIcon Data="{x:Static app:Icons.Checklist}" Width="56" Height="56" Classes="accent" HorizontalAlignment="Center" />
+        <TextBlock Classes="h2" Text="Sua coleção está completa?" HorizontalAlignment="Center" />
+        <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center"
+                   Text="Clique em Verificar. As séries precisam estar identificadas — analise a pasta na tela Organizar primeiro, ou use “Identificar” aqui." />
+      </StackPanel>
+    </Border>
+
+    <!-- Resultados -->
+    <Grid Grid.Row="2" ColumnDefinitions="340,*" ColumnSpacing="14" IsVisible="{Binding HasResults}">
+
+      <!-- Lista de séries -->
+      <Border Classes="card" Padding="10">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="4,2,4,8">
+            <TextBlock Text="{Binding Summary}" FontWeight="Medium" TextWrapping="Wrap" />
+            <TextBox Text="{Binding SearchText}" PlaceholderText="Filtrar por nome..." />
+            <ComboBox ItemsSource="{Binding FilterOptions}" SelectedIndex="{Binding FilterIndex}" HorizontalAlignment="Stretch" />
+            <WrapPanel ItemSpacing="6" LineSpacing="6">
+              <Border Classes="badge review" IsVisible="{Binding HasIncomplete}"><TextBlock Text="{Binding IncompleteCount, StringFormat='{}{0} incompletas'}" /></Border>
+              <Border Classes="badge done"><TextBlock Text="{Binding CompleteCount, StringFormat='{}{0} completas'}" /></Border>
+              <Border Classes="badge problem" IsVisible="{Binding HasProblems}"><TextBlock Text="{Binding ProblemCount, StringFormat='{}{0} sem correspondência'}" /></Border>
+            </WrapPanel>
+          </StackPanel>
+
+          <ListBox Classes="folders" ItemsSource="{Binding VisibleSeries}" SelectedItem="{Binding SelectedSeries}">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:SeriesReportViewModel">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                  <Border Width="36" Height="54" CornerRadius="4" ClipToBounds="True" Background="{DynamicResource SubtleBrush}">
+                    <Panel>
+                      <PathIcon Data="{x:Static app:Icons.Tv}" Classes="muted" IsVisible="{Binding Poster, Converter={x:Static ObjectConverters.IsNull}}" />
+                      <Image Source="{Binding Poster}" Stretch="UniformToFill" />
+                    </Panel>
+                  </Border>
+                  <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}" FontWeight="Medium" TextTrimming="CharacterEllipsis" />
+                    <ProgressBar Value="{Binding ProgressPercent}" Maximum="100" Height="4" MinHeight="4" IsVisible="{Binding HasShow}" />
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <Border Classes="badge" Classes.done="{Binding IsComplete}" Classes.review="{Binding IsIncomplete}" Classes.problem="{Binding IsProblem}">
+                        <TextBlock Text="{Binding StatusText}" />
+                      </Border>
+                      <TextBlock Classes="caption" Text="{Binding ProgressText}" VerticalAlignment="Center" IsVisible="{Binding HasShow}" />
+                    </StackPanel>
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </DockPanel>
+      </Border>
+
+      <!-- Detalhe da série -->
+      <Border Grid.Column="1" Classes="card" Padding="0">
+        <Panel>
+          <TextBlock Classes="muted" Text="Selecione uma série à esquerda." HorizontalAlignment="Center" VerticalAlignment="Center"
+                     IsVisible="{Binding SelectedSeries, Converter={x:Static ObjectConverters.IsNull}}" />
+          <DockPanel DataContext="{Binding SelectedSeries}" IsVisible="{Binding $self.DataContext, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <DockPanel x:DataType="vm:SeriesReportViewModel">
+
+              <Border DockPanel.Dock="Top" Padding="18,16" BorderBrush="{DynamicResource CardBorderBrush}" BorderThickness="0,0,0,1">
+                <StackPanel Spacing="12">
+                  <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                    <Border Width="60" Height="90" CornerRadius="6" ClipToBounds="True" Background="{DynamicResource SubtleBrush}">
+                      <Panel>
+                        <PathIcon Data="{x:Static app:Icons.Tv}" Classes="muted" Width="24" Height="24" IsVisible="{Binding Poster, Converter={x:Static ObjectConverters.IsNull}}" />
+                        <Image Source="{Binding Poster}" Stretch="UniformToFill" />
+                      </Panel>
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                      <TextBlock Classes="h2" Text="{Binding Name}" TextWrapping="Wrap" />
+                      <TextBlock Classes="caption" Text="{Binding FolderName, StringFormat='Pasta: {0}'}" />
+                      <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasShow}">
+                        <ProgressBar Value="{Binding ProgressPercent}" Maximum="100" Width="160" Height="6" MinHeight="6" />
+                        <TextBlock Classes="caption" Text="{Binding ProgressText}" VerticalAlignment="Center" />
+                      </StackPanel>
+                      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" Height="3" MinHeight="3" Margin="0,4,0,0" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Top">
+                      <Button Classes="subtle" Command="{Binding IdentifyCommand}" IsVisible="{Binding CanIdentify}" ToolTip.Tip="Escolher a série no TMDb">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <PathIcon Data="{x:Static app:Icons.Edit}" />
+                          <TextBlock Text="Identificar" />
+                        </StackPanel>
+                      </Button>
+                      <Button Classes="subtle" Command="{Binding OpenTmdbCommand}" IsVisible="{Binding HasShow}" ToolTip.Tip="Abrir no site do TMDb">
+                        <PathIcon Data="{x:Static app:Icons.External}" />
+                      </Button>
+                      <Button Classes="subtle" Command="{Binding RefreshCommand}" ToolTip.Tip="Atualizar esta série do TMDb (ignora o cache)">
+                        <PathIcon Data="{x:Static app:Icons.Refresh}" />
+                      </Button>
+                    </StackPanel>
+                  </Grid>
+
+                  <Border Classes="banner" Classes.danger="{Binding IsProblem}" IsVisible="{Binding HasMessage}">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                      <PathIcon Data="{x:Static app:Icons.Info}" />
+                      <TextBlock Grid.Column="1" Text="{Binding Message}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                    </Grid>
+                  </Border>
+                </StackPanel>
+              </Border>
+
+              <ScrollViewer Padding="14,12">
+                <StackPanel Spacing="10">
+                  <ItemsControl ItemsSource="{Binding Seasons}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:SeasonReportViewModel">
+                        <Expander IsExpanded="{Binding IsExpanded}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                          <Expander.Header>
+                            <DockPanel>
+                              <Border DockPanel.Dock="Right" Classes="badge" Margin="8,0"
+                                      Classes.done="{Binding IsComplete}" Classes.review="{Binding IsIncomplete}">
+                                <TextBlock Text="{Binding StateText}" />
+                              </Border>
+                              <StackPanel Orientation="Horizontal" Spacing="10">
+                                <TextBlock Classes="h3" Text="{Binding Title}" VerticalAlignment="Center" />
+                                <TextBlock Classes="caption" Text="{Binding CountText}" VerticalAlignment="Center" />
+                              </StackPanel>
+                            </DockPanel>
+                          </Expander.Header>
+                          <ItemsControl ItemsSource="{Binding Episodes}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:EpisodeRowViewModel">
+                                <Grid ColumnDefinitions="Auto,Auto,*,Auto,140" ColumnSpacing="12" Margin="0,4">
+                                  <Panel VerticalAlignment="Center" ToolTip.Tip="{Binding StateText}">
+                                    <PathIcon Data="{x:Static app:Icons.Check}" Classes="success" Width="14" Height="14" IsVisible="{Binding IsPresent}" />
+                                    <PathIcon Data="{x:Static app:Icons.Alert}" Classes="warning" Width="14" Height="14" IsVisible="{Binding IsMissing}" />
+                                    <PathIcon Data="{x:Static app:Icons.History}" Classes="muted" Width="14" Height="14" IsVisible="{Binding IsUpcoming}" />
+                                    <PathIcon Data="{x:Static app:Icons.Check}" Classes="accent" Width="14" Height="14" IsVisible="{Binding IsPresentNotAired}" />
+                                  </Panel>
+                                  <TextBlock Grid.Column="1" Text="{Binding Code}" FontFamily="monospace" VerticalAlignment="Center" Classes="muted" />
+                                  <SelectableTextBlock Grid.Column="2" Text="{Binding Title}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                  <TextBlock Grid.Column="3" Text="{Binding DateText}" Classes="caption" VerticalAlignment="Center" />
+                                  <TextBlock Grid.Column="4" Text="{Binding StateText}" Classes="caption" Classes.warning="{Binding IsMissing}"
+                                             VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                </Grid>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </Expander>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+
+                  <!-- Especiais: à parte, não contam no progresso -->
+                  <ContentControl Content="{Binding Specials}" IsVisible="{Binding HasSpecials}">
+                    <ContentControl.ContentTemplate>
+                      <DataTemplate x:DataType="vm:SeasonReportViewModel">
+                        <Expander IsExpanded="{Binding IsExpanded}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                          <Expander.Header>
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                              <TextBlock Classes="h3" Text="{Binding Title}" VerticalAlignment="Center" />
+                              <TextBlock Classes="caption" Text="{Binding CountText}" VerticalAlignment="Center" />
+                              <TextBlock Classes="caption" Text="· não contam no progresso da série" VerticalAlignment="Center" />
+                            </StackPanel>
+                          </Expander.Header>
+                          <ItemsControl ItemsSource="{Binding Episodes}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:EpisodeRowViewModel">
+                                <Grid ColumnDefinitions="Auto,Auto,*,Auto,140" ColumnSpacing="12" Margin="0,4">
+                                  <Panel VerticalAlignment="Center" ToolTip.Tip="{Binding StateText}">
+                                    <PathIcon Data="{x:Static app:Icons.Check}" Classes="success" Width="14" Height="14" IsVisible="{Binding IsPresent}" />
+                                    <PathIcon Data="{x:Static app:Icons.Alert}" Classes="muted" Width="14" Height="14" IsVisible="{Binding IsMissing}" />
+                                    <PathIcon Data="{x:Static app:Icons.History}" Classes="muted" Width="14" Height="14" IsVisible="{Binding IsUpcoming}" />
+                                    <PathIcon Data="{x:Static app:Icons.Check}" Classes="accent" Width="14" Height="14" IsVisible="{Binding IsPresentNotAired}" />
+                                  </Panel>
+                                  <TextBlock Grid.Column="1" Text="{Binding Code}" FontFamily="monospace" VerticalAlignment="Center" Classes="muted" />
+                                  <SelectableTextBlock Grid.Column="2" Text="{Binding Title}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                  <TextBlock Grid.Column="3" Text="{Binding DateText}" Classes="caption" VerticalAlignment="Center" />
+                                  <TextBlock Grid.Column="4" Text="{Binding StateText}" Classes="caption" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                                </Grid>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </Expander>
+                      </DataTemplate>
+                    </ContentControl.ContentTemplate>
+                  </ContentControl>
+                </StackPanel>
+              </ScrollViewer>
+            </DockPanel>
+          </DockPanel>
+        </Panel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

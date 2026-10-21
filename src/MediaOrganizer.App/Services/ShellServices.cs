@@ -8,6 +8,7 @@ namespace MediaOrganizer.App.Services;
 public enum Page
 {
     Organize,
+    Collection,
     History,
     Settings,
 }
@@ -86,6 +87,29 @@ public sealed partial class ShellServices : ObservableObject
     public async Task OpenUrlAsync(string url)
     {
         if (Host?.Launcher is { } launcher) await launcher.LaunchUriAsync(new Uri(url));
+    }
+
+    /// <summary>Pede ao usuário onde salvar e grava o texto em UTF-8 com BOM (abre corretamente no Excel).</summary>
+    /// <returns>O caminho salvo, ou <c>null</c> se o usuário cancelar.</returns>
+    public async Task<string?> SaveTextFileAsync(string title, string suggestedName, string content, string fileTypeName, string pattern)
+    {
+        if (Host?.StorageProvider is not { CanSave: true } storage) return null;
+
+        var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = title,
+            SuggestedFileName = suggestedName,
+            DefaultExtension = Path.GetExtension(pattern),
+            FileTypeChoices = [new FilePickerFileType(fileTypeName) { Patterns = [pattern] }],
+            ShowOverwritePrompt = true,
+        });
+        if (file is null) return null;
+
+        await using var stream = await file.OpenWriteAsync();
+        stream.SetLength(0);
+        await using var writer = new StreamWriter(stream, new System.Text.UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+        await writer.WriteAsync(content);
+        return file.TryGetLocalPath() ?? file.Name;
     }
 
     public async Task RevealFolderAsync(string path)

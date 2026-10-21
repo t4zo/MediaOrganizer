@@ -1,6 +1,4 @@
 using System.Net.Sockets;
-using System.Runtime.CompilerServices;
-using System.Threading.Channels;
 using MediaOrganizer.Core.Metadata;
 using MediaOrganizer.Core.Parsing;
 using MediaOrganizer.Core.Planning;
@@ -25,29 +23,8 @@ public sealed class LibraryAnalyzer(MediaMatcher matcher, RenamePlanner planner,
     public IReadOnlyList<LibraryFolder> Scan(string root, MediaKind kind) => CreateScanner().Scan(root, kind);
 
     /// <summary>Analisa as pastas em paralelo e devolve cada plano assim que fica pronto.</summary>
-    public async IAsyncEnumerable<FolderPlan> AnalyzeAsync(IReadOnlyList<LibraryFolder> folders, AnalyzeOptions options,
-        [EnumeratorCancellation] CancellationToken ct = default)
-    {
-        var channel = Channel.CreateUnbounded<FolderPlan>();
-        var producer = Task.Run(async () =>
-        {
-            try
-            {
-                var parallel = new ParallelOptions { MaxDegreeOfParallelism = MaxParallelFolders, CancellationToken = ct };
-                await Parallel.ForEachAsync(folders, parallel, async (folder, token) =>
-                    await channel.Writer.WriteAsync(await AnalyzeFolderAsync(folder, options, null, token).ConfigureAwait(false), token)
-                        .ConfigureAwait(false)).ConfigureAwait(false);
-                channel.Writer.Complete();
-            }
-            catch (Exception e)
-            {
-                channel.Writer.Complete(e);
-            }
-        }, ct);
-
-        await foreach (var plan in channel.Reader.ReadAllAsync(ct).ConfigureAwait(false)) yield return plan;
-        await producer.ConfigureAwait(false);
-    }
+    public IAsyncEnumerable<FolderPlan> AnalyzeAsync(IReadOnlyList<LibraryFolder> folders, AnalyzeOptions options, CancellationToken ct = default) =>
+        AsyncParallel.StreamAsync(folders, MaxParallelFolders, (folder, token) => AnalyzeFolderAsync(folder, options, null, token), ct);
 
     /// <summary>Analisa uma pasta. Com <paramref name="chosen"/>, usa a correspondência escolhida pelo usuário.</summary>
     public async Task<FolderPlan> AnalyzeFolderAsync(LibraryFolder folder, AnalyzeOptions options, MediaCandidate? chosen, CancellationToken ct)

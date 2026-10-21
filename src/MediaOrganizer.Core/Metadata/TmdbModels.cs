@@ -20,11 +20,23 @@ public sealed record TvDetails(
     string? FirstAirDate,
     int NumberOfSeasons,
     string? Overview,
-    string? PosterPath);
+    string? PosterPath,
+    IReadOnlyList<TvSeasonSummary>? Seasons = null);
+
+/// <summary>Resumo de uma temporada em <c>tv/{id}</c> (a temporada 0 são os especiais).</summary>
+public sealed record TvSeasonSummary(int SeasonNumber, int EpisodeCount, string? AirDate, string? Name);
 
 public sealed record TvSeason(int SeasonNumber, IReadOnlyList<TvEpisode> Episodes);
 
-public sealed record TvEpisode(int EpisodeNumber, string? Name, string? AirDate);
+public sealed record TvEpisode(int EpisodeNumber, string? Name, string? AirDate)
+{
+    /// <summary>Data de exibição ("2008-01-20"), ou <c>null</c> se ausente/inválida.</summary>
+    public DateOnly? AiredOn => ParseDate(AirDate);
+
+    public static DateOnly? ParseDate(string? date) =>
+        DateOnly.TryParseExact(date, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out var value) ? value : null;
+}
 
 public sealed record MovieSearchResult(
     int Id,

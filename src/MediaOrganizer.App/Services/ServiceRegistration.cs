@@ -1,5 +1,6 @@
 using MediaOrganizer.App.ViewModels;
 using MediaOrganizer.Core;
+using MediaOrganizer.Core.Collection;
 using MediaOrganizer.Core.Execution;
 using MediaOrganizer.Core.Metadata;
 using MediaOrganizer.Core.Planning;
@@ -39,12 +40,15 @@ internal static class ServiceRegistration
         services.AddSingleton<MediaMatcher>();
         services.AddSingleton<RenamePlanner>();
         services.AddSingleton<LibraryAnalyzer>();
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<CollectionAnalyzer>();
         services.AddSingleton<RenameExecutor>();
 
         services.AddSingleton<ShellServices>();
         services.AddSingleton<UndoService>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<OrganizeViewModel>();
+        services.AddSingleton<CollectionViewModel>();
         services.AddSingleton<HistoryViewModel>();
         services.AddSingleton<SettingsViewModel>();
         services.AddTransient<OnboardingViewModel>();

@@ -54,6 +54,8 @@ seguindo o padrão **`[Nome da Série] SXXEXX - [Nome do Episódio].[extensão o
 | **"Nada foi alterado"** | O app guarda uma impressão digital (hash) de cada pasta processada. Se nenhum arquivo entrou ou saiu, a pasta não é reprocessada e você é avisado. |
 | **Lixo de release** | Lista `RARBG.txt`, `PSArips.com.txt`, `.nfo`, pastas vazias... para enviar à **Lixeira** (nunca apaga definitivamente). |
 | **Filmes** | Renomeia para `Filme (Ano)/Filme (Ano).ext`, criando a pasta quando o arquivo está solto. |
+| **Especiais** | Episódios `S00E01` e pastas `Specials`/`Season 00` usam os títulos da temporada 0; especiais sem número são sugeridos pelo título e só são aplicados se você marcar. |
+| **Coleção** | Lista, por série e temporada, todos os episódios com a situação de cada um (na pasta, faltando, não exibido), destacando os que faltam. Exporta os faltantes em CSV ou texto. |
 | **Conflitos** | Se dois arquivos ficariam com o mesmo nome, ou o nome já existe, a linha é bloqueada — nada é sobrescrito. |
 | **Portátil** | Configurações e histórico ficam numa pasta `data/` ao lado do executável. |
 
