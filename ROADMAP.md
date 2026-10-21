@@ -17,7 +17,7 @@ Legenda: ✅ concluído · 🚧 em andamento · 📋 planejado · 💡 ideia (a 
 
 ## v1.1 — Distribuição automática, especiais e coleção ✅
 
-Publicada em [v1.1.0](https://github.com/t4zo/MediaOrganizer/releases/tag/v1.1.0). Plano: [docs/plans/v1.1.md](docs/plans/v1.1.md).
+Publicada em [v1.1.0](https://github.com/t4zo/MediaOrganizer/releases/tag/v1.1.0).
 
 ### Publicação de versões no GitHub (CI/CD)
 
@@ -47,9 +47,14 @@ Publicada em [v1.1.0](https://github.com/t4zo/MediaOrganizer/releases/tag/v1.1.0
 ## v1.2 — Baixar legendas 📋
 
 - Buscar legendas para episódios/filmes sem legenda no idioma desejado (ex.: `pt-BR`, `en`).
-- Provedor inicial: [OpenSubtitles](https://opensubtitles.stoplight.io/) (API com chave gratuita); busca por *hash* do arquivo e, em seguida, por título/temporada/episódio.
+- Considerar as legendas já presentes: arquivos externos e faixas embutidas no MKV (sem baixar o que já existe).
+- Provedores, nesta ordem:
+  - [OpenSubtitles.com](https://opensubtitles.stoplight.io/): *hash* do arquivo + ID do título;
+  - [SubDL](https://subdl.com/api-doc): ID do título; inclui pacotes de temporada;
+  - [SubSource](https://subsource.net/): ID do título.
+- Nova tela **Legendas**: busca na prévia (sem gastar cota) e download só do que for selecionado.
 - Salvar ao lado do vídeo já no padrão (`Série S01E01 - Título.pt-BR.srt`), registrando no Histórico para poder desfazer.
-- Configuração de idiomas preferidos e opção de incluir legendas forçadas/SDH.
+- Configuração de idiomas preferidos, legendas forçadas/SDH e chaves de cada provedor.
 
 Critério de pronto: selecionar uma série e baixar as legendas `pt-BR` faltantes em um clique, com prévia antes de salvar.
 
