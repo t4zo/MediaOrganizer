@@ -17,7 +17,7 @@
 #>
 param(
     [string[]] $Targets = @('win-x64', 'linux-x64', 'osx-arm64', 'osx-x64'),
-    [string] $Version = '1.0.0',
+    [string] $Version = '1.1.0',
     [string] $Configuration = 'Release'
 )
 
@@ -60,7 +60,7 @@ foreach ($rid in $Targets) {
 
             Copy-Item (Join-Path $out 'MediaOrganizer') $macos -Force
             Copy-Item (Join-Path $root 'build/macos/app.icns') $resources -Force
-            (Get-Content (Join-Path $root 'build/macos/Info.plist') -Raw).Replace('$(VERSION)', $Version) |
+            (Get-Content (Join-Path $root 'build/macos/Info.plist') -Raw).Replace('$(VERSION)', ($Version -split '-')[0]) |
                 Set-Content (Join-Path $app 'Contents/Info.plist') -Encoding utf8 -NoNewline
         }
     }

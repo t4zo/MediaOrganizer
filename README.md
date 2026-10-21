@@ -61,16 +61,25 @@ seguindo o padrão **`[Nome da Série] SXXEXX - [Nome do Episódio].[extensão o
 
 ## Download e uso
 
-Baixe o executável do seu sistema na página de [Releases](../../releases) (ou gere você mesmo — veja [docs/BUILDING.md](docs/BUILDING.md)). Não é necessário instalar o .NET.
+Baixe o arquivo do seu sistema na página de [Releases](../../releases/latest) (ou gere você mesmo — veja [docs/BUILDING.md](docs/BUILDING.md)). Não é necessário instalar o .NET.
+
+| Sistema | Arquivo |
+| --- | --- |
+| Windows 10/11 | `MediaOrganizer-windows-x64.exe` |
+| macOS (Apple Silicon: M1/M2/M3/M4) | `MediaOrganizer-macos-arm64.zip` |
+| macOS (Intel) | `MediaOrganizer-macos-x64.zip` |
+| Linux x64 | `MediaOrganizer-linux-x64.tar.gz` |
+
+O arquivo `SHA256SUMS.txt` traz os checksums para conferir o download.
 
 ### Windows
 
-1. Baixe `MediaOrganizer.exe` e coloque-o numa pasta de sua escolha (ex.: `C:\Apps\MediaOrganizer\`).
+1. Baixe `MediaOrganizer-windows-x64.exe` e coloque-o numa pasta de sua escolha (ex.: `C:\Apps\MediaOrganizer\`). Pode renomeá-lo para `MediaOrganizer.exe`.
 2. Dê dois cliques. Se aparecer o aviso do SmartScreen ("O Windows protegeu o computador"), clique em **Mais informações → Executar assim mesmo** (o executável não é assinado digitalmente).
 
 ### macOS
 
-1. Baixe `MediaOrganizer-arm64.app` (Apple Silicon: M1/M2/M3/M4) ou `MediaOrganizer-x64.app` (Intel).
+1. Baixe o `.zip` do seu processador e dê dois cliques para descompactar: aparece `MediaOrganizer-arm64.app` (ou `-x64.app`).
 2. Mova para a pasta **Aplicativos**.
 3. Na primeira vez, clique com o botão direito no app → **Abrir** → **Abrir**. Se o macOS disser que o app "está danificado", rode no Terminal:
    ```bash
@@ -87,11 +96,12 @@ Baixe o executável do seu sistema na página de [Releases](../../releases) (ou 
    - Debian/Ubuntu: `sudo apt install libx11-6 libice6 libsm6 libfontconfig1 libicu-dev`
    - Fedora: `sudo dnf install libX11 libICE libSM fontconfig libicu`
    - Arch: `sudo pacman -S libx11 libice libsm fontconfig icu`
-2. Baixe `MediaOrganizer`, dê permissão de execução e rode:
+2. Baixe `MediaOrganizer-linux-x64.tar.gz`, descompacte e rode:
    ```bash
-   chmod +x MediaOrganizer
+   tar -xzf MediaOrganizer-linux-x64.tar.gz
    ./MediaOrganizer
    ```
+   Se a permissão de execução se perder (ex.: ao copiar por um pendrive), rode `chmod +x MediaOrganizer`.
 
 ## Primeiros passos
 
@@ -114,6 +124,12 @@ Baixe o executável do seu sistema na página de [Releases](../../releases) (ou 
 Na próxima vez que você analisar a mesma pasta, as séries que não mudaram aparecem como **"Nada alterado desde o último processamento"** e nem consultam a internet:
 
 <img src="docs/images/nothing-changed.png" alt="Nada foi alterado" width="640" />
+
+### Coleção: episódios faltando
+
+Na tela **Coleção**, clique em **Verificar** (`F5`). Para cada série identificada, o app compara os episódios da pasta com a lista oficial do TMDb e mostra, por temporada, o que já foi exibido e está faltando — e os próximos lançamentos. Use **↻** para buscar novidades de séries em exibição e **Exportar** para salvar a lista em CSV (abre no Excel) ou texto.
+
+<img src="docs/images/collection.png" alt="Tela Coleção" width="640" />
 
 ## Regras de nomeação (resumo)
 

@@ -105,7 +105,32 @@ Todos os alvos podem ser gerados a partir de **qualquer** sistema (ex.: gerar o 
 
 Na primeira execução é criada a pasta `data/` ao lado do executável (ou ao lado do `.app`).
 
-## 6. Solução de problemas
+## 6. Integração contínua e publicação de versões
+
+### CI (`.github/workflows/ci.yml`)
+
+A cada push em `main` e em todo pull request, o GitHub Actions compila (`-warnaserror`) e roda os testes em **Windows, macOS e Linux**. O status aparece no selo "CI" do README e nos PRs.
+
+### Publicando uma versão (`.github/workflows/release.yml`)
+
+1. Garanta que `main` está verde no CI e atualize o [ROADMAP](../ROADMAP.md) se necessário.
+2. Crie e envie a tag:
+   ```bash
+   git checkout main && git pull
+   git tag v1.1.0
+   git push origin v1.1.0
+   ```
+3. O workflow roda num runner macOS (para assinar o `.app` ad-hoc), executa `build.sh` com a versão da tag e publica em **Releases**:
+   - `MediaOrganizer-windows-x64.exe`
+   - `MediaOrganizer-linux-x64.tar.gz` (tar preserva a permissão de execução)
+   - `MediaOrganizer-macos-arm64.zip` e `MediaOrganizer-macos-x64.zip` (gerados com `ditto`, preservando o bundle)
+   - `SHA256SUMS.txt`
+   - notas da versão geradas automaticamente a partir dos PRs/commits.
+4. Tags com hífen (ex.: `v1.1.0-rc.1`) viram **pré-lançamento** — use para validar antes da versão final. O `Info.plist` do macOS recebe só a parte numérica (`1.1.0`).
+
+Para refazer uma publicação, apague a release e a tag (`gh release delete v1.1.0 --cleanup-tag`) e envie a tag de novo.
+
+## 7. Solução de problemas
 
 | Sintoma | Causa / solução |
 | --- | --- |

@@ -17,7 +17,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT="$ROOT/src/MediaOrganizer.App/MediaOrganizer.App.csproj"
 DIST="$ROOT/dist"
 PUBLISH_ROOT="$ROOT/artifacts/publish"
-VERSION="${VERSION:-1.0.0}"
+VERSION="${VERSION:-1.1.0}"
+# O Info.plist do macOS aceita só números ("1.1.0-rc.1" vira "1.1.0").
+PLIST_VERSION="${VERSION%%-*}"
 CONFIGURATION="${CONFIGURATION:-Release}"
 
 if [ "$#" -gt 0 ]; then TARGETS=("$@"); else TARGETS=(win-x64 linux-x64 osx-arm64 osx-x64); fi
@@ -49,7 +51,7 @@ for RID in "${TARGETS[@]}"; do
       cp "$OUT/MediaOrganizer" "$APP/Contents/MacOS/"
       chmod +x "$APP/Contents/MacOS/MediaOrganizer"
       cp "$ROOT/build/macos/app.icns" "$APP/Contents/Resources/"
-      sed "s/\$(VERSION)/$VERSION/g" "$ROOT/build/macos/Info.plist" > "$APP/Contents/Info.plist"
+      sed "s/\$(VERSION)/$PLIST_VERSION/g" "$ROOT/build/macos/Info.plist" > "$APP/Contents/Info.plist"
       # Assinatura ad-hoc (só no macOS): evita o erro "app danificado" em Apple Silicon.
       if command -v codesign >/dev/null 2>&1; then codesign --force --deep --sign - "$APP" || true; fi
       ;;

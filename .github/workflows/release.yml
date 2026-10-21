@@ -1,0 +1,49 @@
+name: Release
+
+# Publica os executáveis em Releases ao enviar uma tag "vX.Y.Z" (ou "vX.Y.Z-rc.N" para pré-lançamento).
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Gerar e publicar ${{ github.ref_name }}
+    # macOS: permite assinar o .app (ad-hoc) e gera Windows/Linux por cross-compile na mesma máquina.
+    runs-on: macos-latest
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+      DOTNET_NOLOGO: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Build (testes + executáveis dos 4 alvos)
+        run: VERSION="${GITHUB_REF_NAME#v}" ./build.sh
+
+      - name: Empacotar
+        run: |
+          mkdir -p release
+          cp dist/windows/MediaOrganizer.exe release/MediaOrganizer-windows-x64.exe
+          # tar preserva o bit de execução; ditto preserva o bundle .app e as permissões.
+          tar -czf release/MediaOrganizer-linux-x64.tar.gz -C dist/linux MediaOrganizer
+          for arch in arm64 x64; do
+            ditto -c -k --keepParent "dist/macos/MediaOrganizer-$arch.app" "release/MediaOrganizer-macos-$arch.zip"
+          done
+          cd release && shasum -a 256 * > SHA256SUMS.txt && cat SHA256SUMS.txt
+
+      - name: Publicar no GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=()
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then flags+=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --title "MediaOrganizer $GITHUB_REF_NAME" \
+            --generate-notes \
+            "${flags[@]}"
