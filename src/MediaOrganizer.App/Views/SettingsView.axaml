@@ -98,6 +98,29 @@
           <Separator />
 
           <StackPanel Spacing="8">
+            <TextBlock Text="Ao baixar" FontWeight="SemiBold" />
+            <ComboBox ItemsSource="{Binding SubtitleOutputOptions}" SelectedIndex="{Binding SubtitleOutputIndex}" HorizontalAlignment="Stretch" />
+            <TextBlock Classes="caption" TextWrapping="Wrap"
+                       Text="Embutir gera um MKV novo com as legendas como faixas (precisa de espaço livre igual ao tamanho do vídeo). MP4 e AVI continuam com o arquivo ao lado." />
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+              <TextBox Text="{Binding MkvMergePath}" PlaceholderText="Caminho do mkvmerge (vazio = procurar automaticamente)" />
+              <Button Grid.Column="1" Classes="subtle" Command="{Binding OpenMkvToolNixCommand}" ToolTip.Tip="Baixar o MKVToolNix">
+                <PathIcon Data="{x:Static app:Icons.External}" />
+              </Button>
+              <Button Grid.Column="2" Content="Testar" Command="{Binding TestMkvMergeCommand}" />
+            </Grid>
+            <TextBlock Classes="caption" Text="{Binding MkvMergeStatus}" TextWrapping="Wrap"
+                       IsVisible="{Binding MkvMergeStatus, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <StackPanel Spacing="2">
+              <CheckBox Content="Guardar o vídeo original ao embutir (para desfazer na hora)" IsChecked="{Binding KeepOriginalAfterEmbed}" />
+              <TextBlock Classes="caption" Margin="28,0,0,0" TextWrapping="Wrap"
+                         Text="O original fica em “.mediaorganizer/originals” na pasta da série, até você remover pelo Histórico. Desligado, ele vai para a Lixeira e desfazer remove as faixas com um novo processamento." />
+            </StackPanel>
+          </StackPanel>
+
+          <Separator />
+
+          <StackPanel Spacing="8">
             <DockPanel>
               <CheckBox DockPanel.Dock="Right" Content="Ativado" IsChecked="{Binding OpenSubtitlesEnabled}" />
               <TextBlock Text="OpenSubtitles.com" FontWeight="SemiBold" VerticalAlignment="Center" />

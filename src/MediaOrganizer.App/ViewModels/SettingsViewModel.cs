@@ -115,6 +115,38 @@ public sealed partial class SettingsViewModel(
     [RelayCommand]
     private Task OpenSubDlAsync() => shell.OpenUrlAsync(SubDlKeyUrl);
 
+    public const string MkvToolNixUrl = "https://mkvtoolnix.download/downloads.html";
+
+    public IReadOnlyList<string> SubtitleOutputOptions { get; } = ["Arquivo ao lado do vídeo", "Embutir no vídeo (só MKV; requer o MKVToolNix)"];
+
+    /// <summary>0 = arquivo; 1 = embutir no MKV.</summary>
+    [ObservableProperty]
+    public partial int SubtitleOutputIndex { get; set; }
+
+    [ObservableProperty]
+    public partial string MkvMergePath { get; set; } = "";
+
+    [ObservableProperty]
+    public partial bool KeepOriginalAfterEmbed { get; set; }
+
+    [ObservableProperty]
+    public partial string? MkvMergeStatus { get; private set; }
+
+    [RelayCommand]
+    private async Task TestMkvMergeAsync()
+    {
+        var draft = MkvMergePath;
+        var embedder = new SubtitleEmbedder(new MkvMergeRunner(), () => draft);
+        MkvMergeStatus = "Testando...";
+        var version = await embedder.GetVersionAsync(CancellationToken.None);
+        MkvMergeStatus = embedder.ToolPath is { } path && version.StartsWith("mkvmerge", StringComparison.OrdinalIgnoreCase)
+            ? $"{version} — {path}"
+            : version;
+    }
+
+    [RelayCommand]
+    private Task OpenMkvToolNixAsync() => shell.OpenUrlAsync(MkvToolNixUrl);
+
     public const string SubSourceUrl = "https://subsource.net";
 
     [ObservableProperty]
@@ -213,6 +245,10 @@ public sealed partial class SettingsViewModel(
         SubSourceEnabled = s.SubSource.Enabled;
         SubSourceApiKey = s.SubSource.ApiKey ?? "";
         SubSourceStatus = null;
+        SubtitleOutputIndex = (int)s.SubtitleOutput;
+        MkvMergePath = s.MkvMergePath ?? "";
+        KeepOriginalAfterEmbed = s.KeepOriginalAfterEmbed;
+        MkvMergeStatus = null;
         KeyStatus = null;
         KeyValid = null;
         return this;
@@ -259,6 +295,9 @@ public sealed partial class SettingsViewModel(
             };
             s.SubDl = new SubDlSettings { Enabled = SubDlEnabled, ApiKey = Blank(SubDlApiKey) };
             s.SubSource = new SubSourceSettings { Enabled = SubSourceEnabled, ApiKey = Blank(SubSourceApiKey) };
+            s.SubtitleOutput = (SubtitleOutput)Math.Clamp(SubtitleOutputIndex, 0, 1);
+            s.MkvMergePath = Blank(MkvMergePath);
+            s.KeepOriginalAfterEmbed = KeepOriginalAfterEmbed;
         });
         subtitleProviders.ResetDisabled();
         SubtitleLanguages = string.Join(", ", settings.Current.SubtitleLanguages);

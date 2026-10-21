@@ -4,11 +4,37 @@ using CommunityToolkit.Mvvm.Input;
 using MediaOrganizer.App.Services;
 using MediaOrganizer.Core;
 using MediaOrganizer.Core.Execution;
+using MediaOrganizer.Core.Subtitles;
 
 namespace MediaOrganizer.App.ViewModels;
 
-public sealed partial class HistoryViewModel(HistoryStore history, UndoService undo) : ObservableObject
+public sealed partial class HistoryViewModel(HistoryStore history, UndoService undo, ShellServices shell, SubtitleEmbedder embedder) : ObservableObject
 {
+    /// <summary>Manda os vídeos originais guardados ao embutir legendas para a Lixeira; desfazer passa a usar o remux.</summary>
+    internal async Task RemoveBackupsAsync(BatchViewModel batch)
+    {
+        if (!await shell.ConfirmAsync("Remover os vídeos originais guardados?",
+                $"{batch.BackupText} serão enviados para a Lixeira. Em HD externo sem Lixeira, a exclusão é definitiva. " +
+                "Depois disso, desfazer este lote remove as faixas com um novo processamento (requer o mkvmerge).",
+                "Remover", destructive: true))
+            return;
+
+        try
+        {
+            await Task.Run(() => embedder.RemoveBackups(batch.Journal));
+            shell.ShowToast("Backups removidos.");
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            shell.ShowToast($"Não foi possível remover: {e.Message}", isError: true);
+        }
+        finally
+        {
+            history.Save(batch.Journal);
+            Refreshed();
+        }
+    }
+
     public ObservableCollection<BatchViewModel> Batches { get; } = [];
 
     public bool IsEmpty => Batches.Count == 0;
@@ -76,4 +102,17 @@ public sealed partial class BatchViewModel(RenameJournal journal, HistoryViewMod
 
     [RelayCommand]
     private Task UndoAsync() => owner.UndoAsync(this);
+
+    private long? _backupSize;
+
+    /// <summary>Espaço ocupado pelos vídeos originais guardados ao embutir legendas.</summary>
+    public long BackupSize => _backupSize ??= Journal.UndoneAt is null ? SubtitleEmbedder.BackupSize(Journal) : 0;
+
+    public bool HasBackups => BackupSize > 0;
+
+    public string BackupText => string.Create(System.Globalization.CultureInfo.CurrentCulture,
+        $"Originais guardados: {BackupSize / (1024.0 * 1024 * 1024):0.00} GB");
+
+    [RelayCommand]
+    private Task RemoveBackupsAsync() => owner.RemoveBackupsAsync(this);
 }

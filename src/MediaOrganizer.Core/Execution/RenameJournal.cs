@@ -27,15 +27,15 @@ public enum OperationKind
 public sealed class JournalOperation
 {
     public OperationKind Kind { get; init; }
-    public required string From { get; init; }
+    public required string From { get; set; }
     public required string To { get; init; }
     public bool IsDirectory { get; init; }
 
     /// <summary>Texto exibido no Histórico (ex.: idiomas embutidos).</summary>
-    public string? Note { get; init; }
+    public string? Note { get; set; }
 
     /// <summary>IDs (mkvmerge) das faixas adicionadas por <see cref="OperationKind.Embed"/>.</summary>
-    public List<int>? AddedTrackIds { get; init; }
+    public List<int>? AddedTrackIds { get; set; }
     public OperationState State { get; set; } = OperationState.Pending;
     public string? Error { get; set; }
 }

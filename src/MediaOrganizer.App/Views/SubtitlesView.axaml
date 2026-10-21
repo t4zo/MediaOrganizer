@@ -160,6 +160,13 @@
                             <TextBlock Text="Identificar" />
                           </StackPanel>
                         </Button>
+                        <Button Classes="subtle" Command="{Binding EmbedExistingCommand}" IsVisible="{Binding CanEmbedExisting}"
+                                ToolTip.Tip="Embutir no MKV as legendas que já estão na pasta (os arquivos saem da pasta; dá para desfazer)">
+                          <StackPanel Orientation="Horizontal" Spacing="6">
+                            <PathIcon Data="{x:Static app:Icons.Video}" />
+                            <TextBlock Text="Embutir existentes" />
+                          </StackPanel>
+                        </Button>
                         <Button Classes="subtle" Command="{Binding RefreshCommand}" ToolTip.Tip="Procurar de novo nos sites (ignora o cache)">
                           <PathIcon Data="{x:Static app:Icons.Refresh}" />
                         </Button>
@@ -262,10 +269,12 @@
             <TextBlock Text="Baixar selecionadas" FontWeight="SemiBold" />
           </StackPanel>
         </Button>
+        <ComboBox DockPanel.Dock="Right" ItemsSource="{Binding OutputOptions}" SelectedIndex="{Binding OutputIndex}" Margin="0,0,10,0"
+                  VerticalAlignment="Center" IsEnabled="{Binding !IsBusy}" ToolTip.Tip="Onde colocar as legendas baixadas" />
         <StackPanel VerticalAlignment="Center" Spacing="2">
           <TextBlock Text="{Binding Summary}" FontWeight="Medium" />
           <TextBlock Classes="caption" Text="{Binding QuotaText}" IsVisible="{Binding HasQuota}" />
-          <TextBlock Classes="caption" Text="As legendas são salvas ao lado do vídeo (ocultas, se ligado nas Configurações). Tudo pode ser desfeito pelo Histórico." />
+          <TextBlock Classes="caption" Text="{Binding OutputHint}" TextWrapping="Wrap" />
         </StackPanel>
       </DockPanel>
     </Border>

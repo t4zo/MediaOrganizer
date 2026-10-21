@@ -100,6 +100,16 @@ public sealed partial class SubtitleFolderViewModel : ObservableObject
     [RelayCommand]
     private Task DownloadAsync() => _owner.DownloadAsync([this]);
 
+    /// <summary>Vídeos MKV com legendas externas de texto que podem ser embutidas.</summary>
+    public IEnumerable<VideoSubtitlePlan> EmbeddableVideos => Plan.Videos.Where(v =>
+        MatroskaReader.IsMatroska(v.State.VideoPath) &&
+        v.State.Existing.Any(e => !e.Embedded && e.Path is not null && SubtitleText.IsText(Path.GetExtension(e.Path))));
+
+    public bool CanEmbedExisting => EmbeddableVideos.Any();
+
+    [RelayCommand]
+    private Task EmbedExistingAsync() => _owner.EmbedExistingAsync(this);
+
     [RelayCommand]
     private Task IdentifyAsync() => _owner.IdentifyAsync(this);
 

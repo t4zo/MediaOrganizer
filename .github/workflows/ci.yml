@@ -40,5 +40,10 @@ jobs:
       - name: Build
         run: dotnet build MediaOrganizer.slnx -c Release -warnaserror
 
+      # O teste de integração de "embutir legendas" usa o mkvmerge real; nos outros sistemas ele é ignorado.
+      - name: MKVToolNix
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends mkvtoolnix
+
       - name: Testes
         run: dotnet test --project tests/MediaOrganizer.Core.Tests -c Release --no-build

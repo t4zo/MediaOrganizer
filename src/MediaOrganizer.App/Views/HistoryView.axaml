@@ -50,6 +50,16 @@
                       </StackPanel>
                     </StackPanel>
                   </DockPanel>
+                  <DockPanel IsVisible="{Binding HasBackups}">
+                    <Button DockPanel.Dock="Right" Classes="subtle" Command="{Binding RemoveBackupsCommand}"
+                            ToolTip.Tip="Enviar os vídeos originais guardados para a Lixeira e liberar espaço">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <PathIcon Data="{x:Static app:Icons.Delete}" />
+                        <TextBlock Text="Remover backups" />
+                      </StackPanel>
+                    </Button>
+                    <TextBlock Classes="caption" Text="{Binding BackupText}" VerticalAlignment="Center" />
+                  </DockPanel>
                   <Expander Header="Ver arquivos" IsExpanded="{Binding IsExpanded}" HorizontalAlignment="Stretch">
                     <ItemsControl ItemsSource="{Binding Operations}">
                       <ItemsControl.ItemTemplate>

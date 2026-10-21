@@ -30,9 +30,11 @@ public sealed partial class SubtitlesViewModel : ObservableObject
     private readonly MediaMatcher _matcher;
     private readonly PosterLoader _posters;
     private readonly UndoService _undo;
+    private readonly SubtitleEmbedder _embedder;
 
     public SubtitlesViewModel(ShellServices shell, SettingsStore settings, LibraryAnalyzer library, SubtitleAnalyzer analyzer,
-        SubtitleDownloader downloader, SubtitleProviderSet providers, MediaMatcher matcher, PosterLoader posters, UndoService undo)
+        SubtitleDownloader downloader, SubtitleProviderSet providers, MediaMatcher matcher, PosterLoader posters, UndoService undo,
+        SubtitleEmbedder embedder)
     {
         _shell = shell;
         _settings = settings;
@@ -43,6 +45,8 @@ public sealed partial class SubtitlesViewModel : ObservableObject
         _matcher = matcher;
         _posters = posters;
         _undo = undo;
+        _embedder = embedder;
+        OutputIndex = (int)settings.Current.SubtitleOutput;
 
         LibraryPath = settings.Current.LastLibraryPath ?? "";
         IsMovies = settings.Current.LastKind == MediaKind.Movie;
@@ -99,6 +103,20 @@ public sealed partial class SubtitlesViewModel : ObservableObject
 
     [ObservableProperty]
     public partial bool HasResults { get; private set; }
+
+    public IReadOnlyList<string> OutputOptions { get; } = ["Salvar como arquivo ao lado do vídeo", "Embutir no vídeo (MKV)"];
+
+    /// <summary>0 = arquivo (oculto, se ligado); 1 = embutir no MKV.</summary>
+    [ObservableProperty]
+    public partial int OutputIndex { get; set; }
+
+    public string OutputHint => OutputIndex == 1
+        ? "Os MKV recebem as legendas como faixas (o original fica guardado para desfazer); MP4 e AVI ficam com o arquivo ao lado."
+        : _settings.Current.HideSubtitleFiles && HiddenFile.IsSupported
+            ? "As legendas são salvas ao lado do vídeo, ocultas. Tudo pode ser desfeito pelo Histórico."
+            : "As legendas são salvas ao lado do vídeo. Tudo pode ser desfeito pelo Histórico.";
+
+    partial void OnOutputIndexChanged(int value) => OnPropertyChanged(nameof(OutputHint));
 
     public bool IsBusy => IsAnalyzing || IsDownloading;
 
@@ -263,7 +281,19 @@ public sealed partial class SubtitlesViewModel : ObservableObject
                 ProgressText = $"Baixando {Math.Min(downloads.Count, (int)Math.Round(p * downloads.Count) + 1)} de {downloads.Count}...";
             });
 
-            var result = await _downloader.ApplyAsync(LibraryPath, kind, description, downloads, progress);
+            var output = (SubtitleOutput)OutputIndex;
+            if (output == SubtitleOutput.Embed && !_embedder.IsAvailable)
+            {
+                _shell.ShowToast("mkvmerge não encontrado: instale o MKVToolNix ou informe o caminho nas Configurações.", isError: true,
+                    "Abrir configurações", () =>
+                    {
+                        _shell.Navigate(Page.Settings);
+                        return Task.CompletedTask;
+                    });
+                return;
+            }
+
+            var result = await _downloader.ApplyAsync(LibraryPath, kind, description, downloads, output, progress);
 
             if (result.Failed == 0)
             {
@@ -285,6 +315,65 @@ public sealed partial class SubtitlesViewModel : ObservableObject
             IsDownloading = false;
             RefreshNotices();
             NotifyTotals();
+        }
+    }
+
+    /// <summary>Embute no MKV as legendas externas que já estão na pasta (os arquivos vão para ".mediaorganizer/originals").</summary>
+    internal async Task EmbedExistingAsync(SubtitleFolderViewModel folder)
+    {
+        if (!_embedder.IsAvailable)
+        {
+            _shell.ShowToast("mkvmerge não encontrado: instale o MKVToolNix ou informe o caminho nas Configurações.", isError: true);
+            return;
+        }
+
+        var videos = folder.EmbeddableVideos.Select(v => new ExistingEmbed(folder.Plan, v.State.VideoPath, v.State.Existing)).ToList();
+        var size = videos.Sum(v => SafeLength(v.VideoPath));
+        var backup = _settings.Current.KeepOriginalAfterEmbed
+            ? "Os vídeos originais ficam guardados em “.mediaorganizer/originals” até você removê-los pelo Histórico."
+            : "Os vídeos originais vão para a Lixeira.";
+        if (!await _shell.ConfirmAsync("Embutir legendas nos vídeos?",
+                $"{videos.Count} vídeo(s) MKV serão regravados com as legendas como faixas; os arquivos de legenda saem da pasta. " +
+                $"É preciso ter cerca de {size / (1024.0 * 1024 * 1024):0.0} GB livres. {backup}",
+                "Embutir"))
+            return;
+
+        IsDownloading = true;
+        Progress = 0;
+        ProgressText = $"Embutindo legendas em {videos.Count} vídeo(s)...";
+        try
+        {
+            var progress = new Progress<double>(p =>
+            {
+                Progress = p * 100;
+                ProgressText = $"Embutindo {Math.Min(videos.Count, (int)Math.Round(p * videos.Count) + 1)} de {videos.Count}...";
+            });
+            var result = await _downloader.EmbedExistingAsync(LibraryPath, IsMovies ? MediaKind.Movie : MediaKind.Series,
+                $"Legendas embutidas: {folder.Name} ({videos.Count})", videos, progress);
+
+            if (result.Failed == 0)
+                _shell.ShowToast($"Legendas embutidas em {result.Succeeded} vídeo(s).", actionText: "Desfazer",
+                    action: () => _undo.UndoAsync(result.Journal, confirm: false));
+            else
+                _shell.ShowToast($"{result.Succeeded} embutido(s), {result.Failed} com erro. Primeiro erro: {result.Errors[0]}", isError: true);
+
+            await ReanalyzeAsync(folder, refresh: false);
+        }
+        finally
+        {
+            IsDownloading = false;
+        }
+    }
+
+    private static long SafeLength(string path)
+    {
+        try
+        {
+            return new FileInfo(path).Length;
+        }
+        catch (IOException)
+        {
+            return 0;
         }
     }
 

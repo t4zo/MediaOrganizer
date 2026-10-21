@@ -61,6 +61,9 @@ internal static class ServiceRegistration
         services.AddSingleton(sp => new SubtitleProviderSet(
             [sp.GetRequiredService<OpenSubtitlesProvider>(), sp.GetRequiredService<SubDlProvider>(), sp.GetRequiredService<SubSourceProvider>()],
             sp.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<IMkvMergeRunner, MkvMergeRunner>();
+        services.AddSingleton(sp => new SubtitleEmbedder(
+            sp.GetRequiredService<IMkvMergeRunner>(), () => sp.GetRequiredService<SettingsStore>().Current.MkvMergePath));
         services.AddSingleton<SubtitleAnalyzer>();
         services.AddSingleton<SubtitleDownloader>();
 
@@ -69,7 +72,7 @@ internal static class ServiceRegistration
         services.AddSingleton<LibraryAnalyzer>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<CollectionAnalyzer>();
-        services.AddSingleton<RenameExecutor>();
+        services.AddSingleton(sp => new RenameExecutor(sp.GetRequiredService<HistoryStore>(), embedUndo: sp.GetRequiredService<SubtitleEmbedder>()));
 
         services.AddSingleton<ShellServices>();
         services.AddSingleton<UndoService>();
