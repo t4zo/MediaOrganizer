@@ -2,6 +2,9 @@ using MediaOrganizer.Core.Parsing;
 
 namespace MediaOrganizer.Core.Planning;
 
+/// <summary>Legenda externa associada a um vídeo. <paramref name="Flag"/>: "forced", "sdh" ou <c>null</c>.</summary>
+public sealed record ExternalSubtitle(string Path, string? Language, string? Flag);
+
 /// <summary>
 /// Associa legendas aos vídeos e calcula o novo nome "&lt;vídeo&gt;.&lt;idioma&gt;[.forced|.sdh].ext".
 /// As legendas são renomeadas na pasta onde já estão.
@@ -74,6 +77,19 @@ public static partial class SubtitleMatcher
         return items;
     }
 
+    /// <summary>Legendas externas de cada vídeo, com idioma e flag detectados (mesmas regras da renomeação).</summary>
+    public static IReadOnlyDictionary<string, List<ExternalSubtitle>> Assign(IReadOnlyCollection<string> videos, IEnumerable<string> subtitles)
+    {
+        var result = videos.ToDictionary(v => v, _ => new List<ExternalSubtitle>(), StringComparer.OrdinalIgnoreCase);
+        foreach (var subtitle in subtitles)
+        {
+            if (FindVideo(subtitle, videos) is not var (video, tokens)) continue;
+            var (language, flag) = DetectLanguage(tokens);
+            result[video].Add(new ExternalSubtitle(subtitle, language, flag));
+        }
+        return result;
+    }
+
     /// <returns>O vídeo dono da legenda e o trecho do nome que descreve idioma/flags.</returns>
     private static (string Video, string Tokens)? FindVideo(string subtitle, IEnumerable<string> videos)
     {
@@ -123,6 +139,9 @@ public static partial class SubtitleMatcher
 
     /// <summary>Código ISO 639-1 de um nome/código de idioma ("English", "eng" → "en"), ou <c>null</c>.</summary>
     internal static string? LanguageCodeFor(string token) => LanguageCodes.TryGetValue(token, out var code) ? code : null;
+
+    /// <summary>"Portuguese (Brazil)", "PT-BR", "pob", "Brasil"...</summary>
+    internal static bool MentionsBrazil(string text) => PortugueseBrazilRegex().IsMatch(text) || text.Contains("brasil", StringComparison.OrdinalIgnoreCase);
 
     internal static (string? Language, string? Flag) DetectLanguage(string tokensText)
     {
