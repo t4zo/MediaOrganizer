@@ -8,13 +8,18 @@ namespace MediaOrganizer.Core.Parsing;
 public static partial class ReleaseNameParser
 {
     /// <summary>Tags técnicas que marcam o fim do nome útil em um release.</summary>
-    internal const string ReleaseTags =
+    internal const string TechnicalTags =
         @"2160p|1440p|1080p|1080i|720p|576p|480p|4k|uhd|10bit|8bit|hdr10\+?|hdr|dv|dovi|sdr|" +
         @"web-?rip|web-?dl|blu-?ray|bdrip|brrip|bdremux|remux|hdtv|dvdrip|dvd|hdrip|" +
         @"x264|x265|h ?264|h ?265|hevc|avc|xvid|av1|" +
         @"aac\d?|ac3|eac3|ddp?\d?|dd\+|dts(?:-hd)?|truehd|atmos|flac|opus|mp3|\dch|" +
-        @"repack\d?|proper|internal|extended|unrated|remastered|imax|dublado|legendado|" +
+        @"repack\d?|proper|internal|dublado|legendado|" +
         @"amzn|nf|dsnp|hmax|atvp|pcok|pmtp";
+
+    /// <summary>Palavras de edição: são tags em episódios/filmes, mas fazem parte do título de especiais ("Pilot Extended").</summary>
+    internal const string EditionTags = "extended|unrated|remastered|imax";
+
+    internal const string ReleaseTags = TechnicalTags + "|" + EditionTags;
 
     /// <summary>Converte separadores de release em espaços. Pontos entre dígitos ("1.23.45") são preservados.</summary>
     public static string NormalizeSeparators(string name)
@@ -58,6 +63,29 @@ public static partial class ReleaseNameParser
         return new ParsedMovie(title, ToInt(yearMatch.Groups["y"].ValueSpan));
     }
 
+    /// <summary>
+    /// Texto útil de um especial sem número ("Breaking.Bad.-.Pilot.Extended.720p" → "Pilot Extended"):
+    /// normaliza, corta nas tags técnicas e remove o nome da série do início (qualquer um dos informados).
+    /// </summary>
+    /// <returns>O texto, ou <c>null</c> se não sobrar nada.</returns>
+    public static string? ParseSpecialTitle(string nameWithoutExtension, IEnumerable<string?> showNames)
+    {
+        var text = NormalizeSeparators(nameWithoutExtension);
+        var tag = TechnicalTagRegex().Match(text);
+        text = TrimSeparators(tag.Success ? text[..tag.Index] : text);
+
+        foreach (var show in showNames.OfType<string>().Select(NormalizeSeparators).Where(s => s.Length > 0).OrderByDescending(s => s.Length))
+        {
+            if (text.StartsWith(show, StringComparison.OrdinalIgnoreCase))
+            {
+                text = TrimSeparators(text[show.Length..]);
+                break;
+            }
+        }
+
+        return text.Length == 0 ? null : text;
+    }
+
     /// <summary>Remove tudo a partir da primeira tag técnica (o "-GRUPO" do release vem depois dela e cai junto).</summary>
     internal static string CutAtReleaseTags(string text)
     {
@@ -97,6 +125,9 @@ public static partial class ReleaseNameParser
 
     [GeneratedRegex(@"[\(\[]?\b(?:" + ReleaseTags + @")\b", RegexOptions.IgnoreCase)]
     private static partial Regex ReleaseTagRegex();
+
+    [GeneratedRegex(@"[\(\[]?\b(?:" + TechnicalTags + @")\b", RegexOptions.IgnoreCase)]
+    private static partial Regex TechnicalTagRegex();
 
     [GeneratedRegex(@"[\(\[]?(?<y>(?:19|20)\d{2})[\)\]]?$")]
     private static partial Regex TrailingYearRegex();

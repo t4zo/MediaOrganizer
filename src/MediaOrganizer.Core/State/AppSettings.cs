@@ -13,11 +13,17 @@ public sealed class AppSettings
 
     public bool RenameSubtitles { get; set; } = true;
 
+    /// <summary>
+    /// Varre as pastas de especiais ("Specials", "Season 00") e usa a temporada 0 do TMDb.
+    /// Prevalece sobre <see cref="IgnoredFolders"/> (configurações da v1.0 ainda listam "Specials").
+    /// </summary>
+    public bool IncludeSpecials { get; set; } = true;
+
     /// <summary>Pastas ignoradas em qualquer nível (extras, making-of, audiobooks...).</summary>
     public List<string> IgnoredFolders { get; set; } =
     [
         "Extras", "Featurettes", "Behind The Scenes", "Deleted Scenes", "Interviews",
-        "Trailers", "Bonus", "Specials", "AudioBooks", "Sample", "Samples",
+        "Trailers", "Bonus", "AudioBooks", "Sample", "Samples",
     ];
 
     /// <summary>Padrões (curinga * e ?) de arquivos de lixo de release.</summary>

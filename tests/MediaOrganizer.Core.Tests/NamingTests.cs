@@ -13,6 +13,7 @@ public class NamingTests
     public static TheoryData<SanitizeCase> SanitizeCases => [.. ConformanceCases.Load().Sanitize];
     public static TheoryData<FormatCase> FormatCases => [.. ConformanceCases.Load().Format];
     public static TheoryData<SubtitleLanguageCase> SubtitleLanguages => [.. ConformanceCases.Load().SubtitleLanguages];
+    public static TheoryData<SpecialTitleCase> SpecialTitles => [.. ConformanceCases.Load().SpecialTitles];
 
     [Theory]
     [MemberData(nameof(Episodes))]
@@ -46,6 +47,11 @@ public class NamingTests
     [MemberData(nameof(SubtitleLanguages))]
     public void DetectsSubtitleLanguage(SubtitleLanguageCase c) =>
         Assert.Equal((c.Language, c.Flag), SubtitleMatcher.DetectLanguage(c.Input));
+
+    [Theory]
+    [MemberData(nameof(SpecialTitles))]
+    public void ExtractsUnnumberedSpecialTitles(SpecialTitleCase c) =>
+        Assert.Equal(c.Output, ReleaseNameParser.ParseSpecialTitle(c.Input, c.Shows));
 
     [Theory]
     [InlineData("en", "en-US", true)]

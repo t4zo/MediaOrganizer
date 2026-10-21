@@ -17,6 +17,9 @@ public sealed partial class SettingsViewModel(
     public partial bool RenameSubtitles { get; set; }
 
     [ObservableProperty]
+    public partial bool IncludeSpecials { get; set; }
+
+    [ObservableProperty]
     public partial string IgnoredFolders { get; set; } = "";
 
     [ObservableProperty]
@@ -38,6 +41,7 @@ public sealed partial class SettingsViewModel(
         var s = settings.Current;
         ApiKey = s.TmdbApiKey ?? "";
         RenameSubtitles = s.RenameSubtitles;
+        IncludeSpecials = s.IncludeSpecials;
         IgnoredFolders = string.Join(Environment.NewLine, s.IgnoredFolders);
         JunkPatterns = string.Join(Environment.NewLine, s.JunkPatterns);
         ProcessedCount = processed.Count;
@@ -68,6 +72,7 @@ public sealed partial class SettingsViewModel(
         {
             s.TmdbApiKey = ApiKey.Trim();
             s.RenameSubtitles = RenameSubtitles;
+            s.IncludeSpecials = IncludeSpecials;
             s.IgnoredFolders = SplitLines(IgnoredFolders);
             s.JunkPatterns = SplitLines(JunkPatterns);
         });

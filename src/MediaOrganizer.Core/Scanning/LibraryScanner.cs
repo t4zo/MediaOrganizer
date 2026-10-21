@@ -4,9 +4,15 @@ namespace MediaOrganizer.Core.Scanning;
 /// Varre uma pasta raiz da biblioteca. Para séries, cada subpasta direta é uma série
 /// (os arquivos permanecem nas subpastas onde estão). Para filmes, cada subpasta ou vídeo solto é um filme.
 /// </summary>
-public sealed class LibraryScanner(IEnumerable<string> ignoredFolders, JunkDetector junkDetector)
+/// <param name="includeSpecials">
+/// Pastas de especiais ("Specials", "Season 00") são varridas quando <c>true</c> e ignoradas quando <c>false</c>,
+/// independentemente da lista de pastas ignoradas.
+/// </param>
+public sealed partial class LibraryScanner(IEnumerable<string> ignoredFolders, JunkDetector junkDetector, bool includeSpecials = false)
 {
     private readonly HashSet<string> _ignored = new(ignoredFolders, StringComparer.OrdinalIgnoreCase);
+
+    public static bool IsSpecialsFolder(string name) => SpecialsFolderRegex().IsMatch(name);
 
     private static readonly EnumerationOptions Options = new()
     {
@@ -37,8 +43,9 @@ public sealed class LibraryScanner(IEnumerable<string> ignoredFolders, JunkDetec
         var subtitles = new List<string>();
         var junk = new List<string>();
         var emptyDirs = new List<string>();
+        var specials = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        Collect(folderPath, videos, subtitles, junk, emptyDirs, isTop: true);
+        Collect(folderPath, videos, subtitles, junk, emptyDirs, specials, isTop: true, inSpecials: false);
 
         if (kind == MediaKind.Movie && videos.Count > 1)
         {
@@ -48,7 +55,10 @@ public sealed class LibraryScanner(IEnumerable<string> ignoredFolders, JunkDetec
         }
 
         return new LibraryFolder(kind, rootPath, folderPath, Path.GetFileName(folderPath), IsLooseFile: false,
-            videos, subtitles, junk, emptyDirs);
+            videos, subtitles, junk, emptyDirs)
+        {
+            SpecialVideos = specials.ToFrozenSet(StringComparer.OrdinalIgnoreCase),
+        };
     }
 
     private static IEnumerable<LibraryFolder> ScanLooseMovies(string root)
@@ -66,7 +76,8 @@ public sealed class LibraryScanner(IEnumerable<string> ignoredFolders, JunkDetec
     }
 
     /// <returns><c>true</c> se a pasta contém algum arquivo (direta ou indiretamente).</returns>
-    private bool Collect(string dir, List<string> videos, List<string> subtitles, List<string> junk, List<string> emptyDirs, bool isTop)
+    private bool Collect(string dir, List<string> videos, List<string> subtitles, List<string> junk, List<string> emptyDirs,
+        HashSet<string> specials, bool isTop, bool inSpecials)
     {
         var hasFiles = false;
 
@@ -75,23 +86,35 @@ public sealed class LibraryScanner(IEnumerable<string> ignoredFolders, JunkDetec
             hasFiles = true;
             var name = Path.GetFileName(file);
             if (junkDetector.IsJunk(name)) junk.Add(file);
-            else if (MediaFileTypes.IsVideo(name)) videos.Add(file);
+            else if (MediaFileTypes.IsVideo(name))
+            {
+                videos.Add(file);
+                if (inSpecials) specials.Add(file);
+            }
             else if (MediaFileTypes.IsSubtitle(name)) subtitles.Add(file);
         }
 
         foreach (var sub in Directory.EnumerateDirectories(dir, "*", Options))
         {
-            if (IsSkipped(Path.GetFileName(sub)))
+            var name = Path.GetFileName(sub);
+            if (IsSkipped(name))
             {
                 hasFiles = true; // pastas ignoradas nunca são consideradas vazias
                 continue;
             }
-            hasFiles |= Collect(sub, videos, subtitles, junk, emptyDirs, isTop: false);
+            hasFiles |= Collect(sub, videos, subtitles, junk, emptyDirs, specials, isTop: false,
+                inSpecials: inSpecials || IsSpecialsFolder(name));
         }
 
         if (!hasFiles && !isTop) emptyDirs.Add(dir);
         return hasFiles;
     }
 
-    private bool IsSkipped(string name) => name.StartsWith('.') || name.StartsWith('$') || _ignored.Contains(name);
+    private bool IsSkipped(string name) =>
+        name.StartsWith('.') || name.StartsWith('$') ||
+        (IsSpecialsFolder(name) ? !includeSpecials : _ignored.Contains(name));
+
+    // "Specials", "Special", "Season 00", "Season 0", "S00"
+    [GeneratedRegex(@"^(specials?|season\s*0+|s0+)$", RegexOptions.IgnoreCase)]
+    private static partial Regex SpecialsFolderRegex();
 }

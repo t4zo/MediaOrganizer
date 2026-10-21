@@ -15,6 +15,9 @@ public sealed record LibraryFolder(
     IReadOnlyList<string> Junk,
     IReadOnlyList<string> EmptyDirectories)
 {
+    /// <summary>Vídeos que estão dentro de uma pasta de especiais ("Specials", "Season 00").</summary>
+    public IReadOnlySet<string> SpecialVideos { get; init; } = FrozenSet<string>.Empty;
+
     /// <summary>Chave portátil entre sistemas: "Series/&lt;nome da raiz&gt;/&lt;pasta&gt;".</summary>
     public string Key => KeyFor(Kind, RootPath, Name);
 
