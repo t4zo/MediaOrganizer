@@ -8,8 +8,11 @@
 └───────────────────────────────────────┬──────────────────────────────────────────────┘
                                         │ usa apenas a API pública do Core
 ┌──────────────────────────── MediaOrganizer.Core (sem UI) ───────────────────────────┐
-│ LibraryAnalyzer (fachada da organização) · CollectionAnalyzer (fachada da Coleção)   │
+│ LibraryAnalyzer (organização) · CollectionAnalyzer (Coleção) · SubtitleAnalyzer      │
+│ + SubtitleDownloader (Legendas)                                                      │
 │   ├─ Collection: CollectionAnalyzer, CollectionExporter, SeriesReport/SeasonReport   │
+│   ├─ Subtitles: SubtitleInventory, MatroskaReader, SubtitleScorer, SubtitleEmbedder, │
+│   │             Providers (OpenSubtitles, SubDL, SubSource), SubtitleArchive         │
 │   ├─ Scanning:  LibraryScanner, JunkDetector, FolderFingerprint                      │
 │   ├─ Parsing:   ReleaseNameParser                                                    │
 │   ├─ Metadata:  TmdbClient, MetadataCache, MediaMatcher, LanguagePolicy,             │
@@ -21,7 +24,7 @@
 └──────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Core** não conhece a interface: pode ser reutilizado por uma CLI, um serviço ou testes. Todo I/O de rede passa por `TmdbClient` (recebe um `HttpClient`, o que permite simular o TMDb nos testes).
+- **Core** não conhece a interface: pode ser reutilizado por uma CLI, um serviço ou testes. Todo I/O de rede passa por `TmdbClient` e pelos provedores de legenda (cada um recebe um `HttpClient`, o que permite simular os serviços nos testes).
 - **App** só orquestra: mostra planos, coleta edições e chama o Core. Nenhuma regra de nomeação vive na UI.
 
 ## Fluxo principal
@@ -65,6 +68,26 @@ Scan (mesmas regras) ──▶ correspondência memorizada? ──não──▶ 
 
 `CollectionAnalyzer` reutiliza `LibraryScanner`, `ReleaseNameParser`, `EpisodeTitles` (títulos na política de idioma) e o `TmdbClient` com cache; "hoje" vem de um `TimeProvider` injetado (data fixa nos testes). A identificação de séries continua centralizada nas correspondências do `SettingsStore`, compartilhadas com a tela Organizar.
 
+## Fluxo das Legendas
+
+```
+Scan ──▶ correspondência memorizada? ──não──▶ NoMatch (sem rede)
+              │ sim
+              ▼
+   IMDb ID (TMDb external_ids / movie) ──▶ SubtitleInventory: externas (SubtitleMatcher) + embutidas (MatroskaReader)
+                                                     │ faltando
+                                                     ▼
+       SubtitleProviderSet: OpenSubtitles → SubDL → SubSource (só o que ainda falta) ──▶ SubtitleScorer ──▶ FolderSubtitlePlan
+                                                                                                             │ prévia
+                                                                                                             ▼
+   SubtitleDownloader: journal (Create/Embed, Pending) ──▶ baixar ──▶ UTF-8 ──▶ arquivo oculto  ou  SubtitleEmbedder (mkvmerge)
+```
+
+- **Buscar não gasta cota; baixar gasta.** A análise só busca; o download acontece ao aplicar.
+- Cada site implementa `ISubtitleProvider` e recebe seu próprio `HttpClient` (sem o handler de resiliência padrão: `ProviderHttp` não repete 429/406 de cota). Erros viram `SubtitleProviderException` (cota, limite, chave, indisponível); cota e chave tiram o site de uso na sessão (`SubtitleProviderSet`).
+- `SubtitleEmbedder` nunca escreve sobre o vídeo: gera um temporário em `.mediaorganizer/tmp`, confere as faixas com o `MatroskaReader` e troca, guardando o original em `.mediaorganizer/originals`. O mkvmerge roda por trás de `IMkvMergeRunner` (falso nos testes).
+- Desfazer: `RenameExecutor.Undo` trata `Create` (Lixeira) e delega `Embed` a `IEmbedUndo` (o `SubtitleEmbedder`).
+
 ## Decisões
 
 | Decisão | Motivo |
@@ -79,6 +102,9 @@ Scan (mesmas regras) ──▶ correspondência memorizada? ──não──▶ 
 | `System.Text.Json` com source generation | Sem reflexão: compatível com trimming e publicação em arquivo único. |
 | `Microsoft.Extensions.Http.Resilience` | Retentativas com backoff para limites de taxa do TMDb (HTTP 429). |
 | Casos de teste em JSON (`docs/test-cases.json`) | A mesma suíte valida a implementação C# e qualquer port futuro. |
+| Leitor de MKV próprio (EBML) em vez de ffprobe | Saber as faixas embutidas sem dependência externa; o executável continua único. |
+| mkvmerge externo (não embutido no app) | Embutir legendas é opcional; o MKVToolNix tem licença e atualizações próprias. |
+| Legenda oculta sem mudar o nome | Players associam a legenda pelo nome; um ponto no início quebraria isso. |
 
 ## Estrutura de pastas
 
@@ -100,4 +126,5 @@ MediaOrganizer/
 
 - **Nova regra de nomeação**: altere `NameFormatter`/`FileNameSanitizer`, adicione casos em `docs/test-cases.json` e **incremente `FolderFingerprint.RulesVersion`** para que pastas já processadas sejam reavaliadas.
 - **Nova fonte de metadados** (ex.: TVmaze): crie um cliente com a mesma forma de `TmdbClient` e use-o em `MediaMatcher`/`RenamePlanner`.
-- **Nova funcionalidade de biblioteca** (ex.: baixar legendas; a Coleção é um exemplo completo): acrescente um serviço no Core consumindo `LibraryScanner`/`LibraryFolder` e uma nova página na App (ViewModel + View + item em `MainWindowViewModel.NavItems` + `DataTemplate` em `App.axaml`).
+- **Novo site de legendas**: implemente `ISubtitleProvider` (busca + download, erros como `SubtitleProviderException`), registre o `HttpClient` e inclua na lista do `SubtitleProviderSet` em `ServiceRegistration`; use `SubtitleArchive` se o site entregar ZIP.
+- **Nova funcionalidade de biblioteca** (a Coleção e as Legendas são exemplos completos): acrescente um serviço no Core consumindo `LibraryScanner`/`LibraryFolder` e uma nova página na App (ViewModel + View + item em `MainWindowViewModel.NavItems` + `DataTemplate` em `App.axaml`).

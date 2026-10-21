@@ -19,7 +19,8 @@ Uma **raiz** é uma pasta escolhida pelo usuário, do tipo `Series` ou `Movie`.
 - Cada vídeo solto na raiz também é um filme ("arquivo solto"); suas legendas são os arquivos de legenda na raiz cujo nome começa com o nome do vídeo.
 
 ### 1.3 Regras de varredura
-- Ignorar entradas ocultas/de sistema e links simbólicos; ignorar pastas cujo nome começa com `.` ou `$`.
+- Ignorar entradas ocultas/de sistema e links simbólicos; ignorar pastas cujo nome começa com `.` ou `$` (inclui `.mediaorganizer`, a pasta de trabalho do app).
+- **Exceção:** arquivos de **legenda** ocultos entram (o app oculta as legendas que baixa, seção 8B). Arquivos `._*` (AppleDouble do macOS em HDs exFAT/FAT) ficam sempre de fora.
 - Ignorar (em qualquer nível) pastas cujo nome esteja na lista configurável, sem diferenciar maiúsculas: `Extras, Featurettes, Behind The Scenes, Deleted Scenes, Interviews, Trailers, Bonus, AudioBooks, Sample, Samples`.
 - **Pastas de especiais** — nome casa `^(specials?|season\s*0+|s0+)$` (sem diferenciar maiúsculas): são varridas se a opção `includeSpecials` estiver ligada (padrão) e ignoradas se estiver desligada, **independentemente** da lista acima (configurações da v1.0 ainda trazem `Specials` nela). Vídeos dentro delas, em qualquer nível, são marcados como *vídeos de especiais* (seção 2.6).
 - Classificação de cada arquivo, nesta ordem:
@@ -198,6 +199,16 @@ Edições do usuário recalculam o status do item e os conflitos da pasta.
 3. Para cada operação: criar a pasta de destino se preciso; mover **sem sobrescrever**. Troca só de maiúsculas: mover para `<destino>.mo-tmp` e depois para o destino. Marcar `Done` ou `Failed` (+ mensagem). Regravar o journal a cada 25 operações e no fim.
 4. **Desfazer**: percorrer as operações `Done` em ordem inversa movendo `to → from`; marcar `Undone`; se a pasta de onde o arquivo saiu ficou vazia e não é a pasta de destino original, removê-la (pasta criada para filme solto). Gravar `undoneAt`.
 
+Cada operação tem um `kind` (ausente = `Move`, compatível com journals da v1.1):
+
+| `kind` | Aplicação | Desfazer |
+| --- | --- | --- |
+| `Move` | mover `from → to` (acima) | mover `to → from` |
+| `Create` | arquivo criado em `to` (legenda baixada); `from` = `"<site>:<id>"` | mandar `to` para a Lixeira |
+| `Embed` | faixas embutidas no vídeo `to`; `from` = backup do original (vazio se não guardado); `addedTrackIds` = IDs do mkvmerge das faixas novas; `note` = idiomas | com backup: `to` para a Lixeira e backup de volta para `to`; sem backup: remux sem as faixas `addedTrackIds` |
+
+Operações `Create` e `Embed` também são gravadas `Pending` **antes** de baixar/embutir (seção 8B).
+
 Formato (camelCase, enums como texto):
 ```json
 {
@@ -229,7 +240,7 @@ Lixo é enviado à Lixeira do sistema (Windows: Shell `SHFileOperation` com `FOF
 + para cada arquivo (vídeos + legendas), ordenado por comparação ordinal:
   "<caminho relativo à pasta, com '/'>|<tamanho em bytes>\n"
 ```
-`RulesVersion` = 2 (v1.0 = 1; v1.1 = 2 por causa dos especiais — incrementar sempre que as regras de nomeação mudarem). A data de modificação **não** entra (precisão diferente entre NTFS/exFAT/APFS/ext4). Para filmes soltos o caminho é relativo à raiz.
+`RulesVersion` = 3 (v1.0 = 1; v1.1 = 2 por causa dos especiais; v1.2 = 3 porque legendas ocultas passaram a entrar na varredura — incrementar sempre que as regras de nomeação ou de varredura mudarem). A data de modificação **não** entra (precisão diferente entre NTFS/exFAT/APFS/ext4). Para filmes soltos o caminho é relativo à raiz.
 
 **Quando gravar**: (a) ao analisar uma pasta que já está toda no padrão (`NoChanges`) com correspondência confiável; (b) após aplicar, se **todas** as mudanças da pasta foram aplicadas com sucesso — recalculado a partir da pasta reescaneada (no caso de filme, já com o novo nome).
 
@@ -275,6 +286,52 @@ Somente para séries. Usa a mesma varredura (1.1–1.3) e as **correspondências
 
 ---
 
+## 8B. Legendas faltantes (buscar e baixar)
+
+Séries e filmes. Usa a mesma varredura (1.1–1.3) e as **correspondências memorizadas** (3.3), como a Coleção: pasta sem correspondência → `NoMatch`, sem rede.
+
+### 8B.1 Idiomas desejados
+Lista `subtitleLanguages` em ordem de prioridade (padrão `pt-BR`, `en`), normalizada: `pt-br`, `PT_BR`, `pob` → `pt-BR`; `EN`, `eng`, `English`, `en-US`, `en-GB` → `en` (inglês não diferencia região); `por` → `pt`. Com `downloadForcedSubtitles`, cada idioma também pede a versão **forçada**. Forçada e normal são tipos diferentes; SDH conta como normal.
+
+### 8B.2 O que o vídeo já tem
+- **Externas**: legendas associadas ao vídeo pelas regras da seção 5.4, com idioma e flag do nome. Sem idioma no nome → "legenda sem idioma" (gera dúvida, abaixo).
+- **Embutidas** (só MKV/MKA/WebM, se `checkEmbeddedSubtitles`): faixas `TrackType = 17` lidas do elemento `Tracks` (pelo `SeekHead`; arquivo corrompido = nenhuma faixa). Idioma: `LanguageBCP47` (se diferente de `und`) vale mais que `Language` (ISO 639-2; ausente = `eng`, padrão do Matroska); `und` sem BCP47 → idioma pelo nome da faixa. `por`/`pt` vira `pt-BR` só se o nome da faixa citar Brasil (`pt-br`, `pob`, `brazil`, `brasil`). Flags `FlagForced` e `FlagHearingImpaired` (ou "forced"/"SDH" no nome).
+
+**Faltando**:
+- modo `All`: cada idioma desejado sem legenda do mesmo tipo;
+- modo `FirstAvailable` (por tipo, normal e forçada separados): os idiomas da lista **antes** do primeiro já presente (com `pt-BR` presente nada falta; com só `en` presente ainda falta `pt-BR`; sem nenhum, todos — e na busca fica só o primeiro que algum site tiver).
+
+**Dúvida** (item começa desmarcado, com mensagem): existe legenda externa sem idioma; ou falta `pt-BR` e existe `pt` sem região.
+
+### 8B.3 Busca nos sites
+Por vídeo com falta: consulta com hash do OpenSubtitles do arquivo (tamanho + soma dos `ulong` little-endian dos 64 KB iniciais e finais, 16 dígitos hex), IMDb ID (`movie/{id}` para filmes, `tv/{id}/external_ids` para séries; sem IMDb usa o TMDb ID), temporada/episódio (séries; sem `SxxExx` no nome → "não identificado", sem busca) e os idiomas faltantes.
+
+Sites, nesta ordem, só os ativados e com chave: **OpenSubtitles** → **SubDL** → **SubSource**. Um idioma deixa de ser pedido aos sites seguintes quando já tem candidato **confiável** (hash confirmado ou encontrado por ID + temporada/episódio). Legendas de tradução automática/IA ficam de fora salvo `includeMachineTranslated`. Buscas ficam em cache por 1 dia (`refresh` ignora).
+
+**Pontuação** (maior primeiro; empate: mais downloads): hash +100; ID +40; mesmo grupo de release (`-NTb`) +20; mesma fonte (WEB-DL, WEBRip, BluRay, HDTV, DVD) +10; mesma resolução +5; SDH conforme `subtitleHearingImpaired` (`Avoid`: normal +5, SDH −30; `Prefer`: SDH +5); pacote de temporada −10. Grupo, fonte e resolução vêm do nome **atual** do vídeo.
+
+**Erros dos sites**: cota diária esgotada (OpenSubtitles HTTP 406; SubDL 429 com `daily_limit`/`api_download_limit_exceeded`; SubSource 429 com liberação a mais de 30 min) e chave recusada tiram o site de uso na sessão (até a renovação, se informada, ou até salvar as Configurações). Limite de requisições curto e falhas de rede são passageiros. Repetições automáticas: só falhas de rede/5xx (2 vezes) e 429 com `Retry-After` ≤ 10 s (1 vez); nunca 429/406 de cota.
+
+### 8B.4 Itens e seleção inicial
+Um item por vídeo e idioma faltante: `Found` (candidatos ordenados), `NotFound`, `Conflict` (já existe arquivo com o nome de destino) ou `Error`. Começam **marcados** os `Found` com candidato confiável e sem dúvida.
+
+### 8B.5 Salvar
+- **Arquivo** (padrão): `<nome base do vídeo>.<idioma>[.forced|.sdh].<formato>` na pasta do vídeo (`.sdh` quando o candidato é SDH), sem sobrescrever (grava `<destino>.mo-tmp` e move). Texto (`srt`, `ass`, `ssa`, `vtt`) é convertido para **UTF-8 com BOM** (UTF-8 válido, UTF-16 com BOM ou, senão, Windows-1252). Com `hideSubtitleFiles`, recebe o atributo oculto (Windows: `Hidden`; macOS: `UF_HIDDEN`; Linux: não suportado). O nome nunca começa com ponto.
+- **Embutir** (`subtitleOutput = Embed`, só MKV; demais formatos caem para arquivo): todas as legendas do vídeo numa só passada do `mkvmerge`:
+  ```
+  mkvmerge --gui-mode -o <pasta>/.mediaorganizer/tmp/<nome>.<aleatório>.mkv <vídeo>
+    [para cada legenda] --language 0:<código> --track-name 0:<nome> --default-track-flag 0:no
+                        [--forced-display-flag 0:yes] [--hearing-impaired-flag 0:yes] --sub-charset 0:UTF-8 <legenda>
+  ```
+  Nome da faixa: `Português (Brasil)`, `English`… + ` (Forçada)` ou ` (SDH)`. Antes: espaço livre ≥ 105% do vídeo. Depois: código de saída 0/1, a saída tem **todas as faixas originais na mesma posição** (mesmo tipo e codec) mais as novas no fim e não é menor que o original — senão o temporário é apagado e o original fica intacto. Troca: original → `.mediaorganizer/originals/<nome>` (com `keepOriginalAfterEmbed`) ou Lixeira; temporário → nome do original. `addedTrackIds` = posições das faixas novas.
+- **Embutir existentes**: o mesmo, com as legendas externas de texto de um MKV; cada legenda usada vai para `.mediaorganizer/originals/` como operação `Move` do mesmo lote.
+- Uma cota esgotada no meio do lote marca como `Failed` os itens restantes daquele site, sem nova chamada; os de outros sites seguem.
+- Se a pasta estava registrada como "nada foi alterado" (seção 8), o fingerprint é regravado depois, e ela continua assim.
+
+`mkvmerge` procurado em: caminho configurado (arquivo ou pasta) → `PATH` → `Program Files\MKVToolNix` (Windows) / Homebrew e `/Applications/MKVToolNix-*.app` (macOS) / `/usr/bin`, `/usr/local/bin`, `/snap/bin` (Linux).
+
+---
+
 ## 9. Dados do aplicativo
 
 Pasta `data/`, resolvida nesta ordem:
@@ -294,7 +351,22 @@ Pasta `data/`, resolvida nesta ordem:
   "includeSpecials": true,
   "ignoredFolders": ["Extras", "Featurettes", "…"],
   "junkPatterns": ["*.nfo", "…"],
+  "subtitleLanguages": ["pt-BR", "en"],
+  "subtitleLanguageMode": "All",
+  "downloadForcedSubtitles": false,
+  "subtitleHearingImpaired": "Avoid",
+  "checkEmbeddedSubtitles": true,
+  "includeMachineTranslated": false,
+  "hideSubtitleFiles": true,
+  "subtitleOutput": "File",
+  "mkvMergePath": null,
+  "keepOriginalAfterEmbed": true,
+  "openSubtitles": { "enabled": true, "apiKey": "…", "username": "…", "password": "…" },
+  "subDl": { "enabled": true, "apiKey": "…" },
+  "subSource": { "enabled": true, "apiKey": "…" },
   "matches": { "Series/Dark": 70523, "Series/Round 6": 93405 }
 }
 ```
-Toda gravação é atômica (escreve `arquivo.tmp` e substitui).
+Toda gravação é atômica (escreve `arquivo.tmp` e substitui). Configurações sem os campos de legenda (v1.1) recebem os padrões acima. Chaves e a senha do OpenSubtitles ficam em texto puro, como a chave do TMDb.
+
+`cache/` guarda as respostas do TMDb (7 dias) e, em `cache/subtitles/`, as buscas nos sites de legenda (1 dia; a chave do site nunca entra na chave do cache).

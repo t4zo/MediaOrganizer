@@ -44,7 +44,7 @@ Publicada em [v1.1.0](https://github.com/t4zo/MediaOrganizer/releases/tag/v1.1.0
 - Uma pasta `Specials` com arquivos de download é renomeada com os títulos oficiais da temporada 0.
 - A tela Coleção lista corretamente os episódios ausentes de uma série com temporadas parciais.
 
-## v1.2 — Baixar legendas 📋
+## v1.2 — Baixar legendas 🚧
 
 - Buscar legendas para episódios/filmes sem legenda no idioma desejado (ex.: `pt-BR`, `en`).
 - Considerar as legendas já presentes: arquivos externos e faixas embutidas no MKV (sem baixar o que já existe).
@@ -53,10 +53,10 @@ Publicada em [v1.1.0](https://github.com/t4zo/MediaOrganizer/releases/tag/v1.1.0
   - [SubDL](https://subdl.com/api-doc): ID do título; inclui pacotes de temporada;
   - [SubSource](https://subsource.net/): ID do título.
 - Nova tela **Legendas**: busca na prévia (sem gastar cota) e download só do que for selecionado.
-- Salvar ao lado do vídeo já no padrão (`Série S01E01 - Título.pt-BR.srt`), registrando no Histórico para poder desfazer.
+- Salvar ao lado do vídeo já no padrão (`Série S01E01 - Título.pt-BR.srt`), oculto por padrão, ou embutir no MKV (MKVToolNix), registrando no Histórico para poder desfazer.
 - Configuração de idiomas preferidos, legendas forçadas/SDH e chaves de cada provedor.
 
-Critério de pronto: selecionar uma série e baixar as legendas `pt-BR` faltantes em um clique, com prévia antes de salvar.
+Critério de pronto: selecionar uma série e baixar as legendas `pt-BR` e `en` faltantes em um clique, com prévia antes de salvar.
 
 ## Ideias a avaliar 💡
 
