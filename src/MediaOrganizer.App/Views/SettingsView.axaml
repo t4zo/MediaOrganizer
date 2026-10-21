@@ -41,6 +41,11 @@
         <StackPanel Spacing="12">
           <TextBlock Classes="h3" Text="Análise" />
           <CheckBox Content="Renomear legendas junto com os vídeos" IsChecked="{Binding RenameSubtitles}" />
+          <StackPanel Spacing="2">
+            <CheckBox Content="Incluir episódios especiais (temporada 0)" IsChecked="{Binding IncludeSpecials}" />
+            <TextBlock Classes="caption" Margin="28,0,0,0" TextWrapping="Wrap"
+                       Text="Varre as pastas “Specials” e “Season 00” e usa os títulos da temporada 0 do TMDb. Especiais sem número são sugeridos pelo título e começam desmarcados." />
+          </StackPanel>
           <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
             <StackPanel Spacing="6">
               <TextBlock Text="Pastas ignoradas (uma por linha)" FontWeight="Medium" />

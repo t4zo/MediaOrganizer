@@ -14,7 +14,7 @@ public sealed partial class ItemViewModel : ObservableObject
         _changed = changed;
         CurrentName = Path.GetFileName(item.SourcePath);
         NewName = Path.GetFileName(item.TargetPath);
-        IsSelected = item.IsChange;
+        IsSelected = item.IsChange && !item.NeedsConfirmation;
 
         var directory = Path.GetDirectoryName(item.SourcePath) ?? "";
         var relative = Path.GetRelativePath(folderPath, directory);

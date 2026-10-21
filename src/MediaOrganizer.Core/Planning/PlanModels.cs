@@ -25,15 +25,21 @@ public enum ItemStatus
 }
 
 /// <summary>Uma operação de renomeação planejada (caminhos absolutos).</summary>
-public sealed record RenameItem(ItemKind Kind, string SourcePath, string TargetPath, ItemStatus Status, string? Message = null)
+/// <param name="NeedsConfirmation">
+/// O destino é uma suposição (ex.: especial casado pelo título): o item começa desmarcado na prévia.
+/// </param>
+public sealed record RenameItem(
+    ItemKind Kind, string SourcePath, string TargetPath, ItemStatus Status, string? Message = null, bool NeedsConfirmation = false)
 {
     public bool IsChange => Status is ItemStatus.Ok or ItemStatus.Warning;
 
+    /// <summary>Novo destino (ex.: editado pelo usuário): o status é recalculado e a ressalva é descartada.</summary>
     public RenameItem WithTarget(string targetPath) => this with
     {
         TargetPath = targetPath,
         Status = PathsEqual(SourcePath, targetPath, ignoreCase: false) ? ItemStatus.Unchanged : ItemStatus.Ok,
         Message = null,
+        NeedsConfirmation = false,
     };
 
     internal static bool PathsEqual(string a, string b, bool ignoreCase) =>

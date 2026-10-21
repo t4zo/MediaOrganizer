@@ -120,7 +120,8 @@ Na próxima vez que você analisar a mesma pasta, as séries que não mudaram ap
 - `.` e `_` dos nomes de download viram espaço; tags técnicas (`1080p`, `x265`, `WEBRip`, `-PSA`, `REPACK`...) são removidas.
 - Título oficial sempre que existir no TMDb (corrige `REPACK`, `(1)`, `-The Red Woman`); se o TMDb não tiver o episódio, mantém o título do arquivo.
 - Caracteres inválidos em Windows/macOS/Linux são tratados: `1:23:45` → `1.23.45`, `Monster: The Ed Gein Story` → `Monster - The Ed Gein Story`.
-- Pastas `Extras`, `Featurettes`, `AudioBooks`, `Specials`... são ignoradas (configurável).
+- Pastas `Extras`, `Featurettes`, `AudioBooks`... são ignoradas (configurável).
+- Especiais (`S00E01`, pastas `Specials`/`Season 00`) usam os títulos da temporada 0; especiais sem número são sugeridos pelo título e começam desmarcados.
 
 Especificação completa: [docs/SPEC.md](docs/SPEC.md).
 

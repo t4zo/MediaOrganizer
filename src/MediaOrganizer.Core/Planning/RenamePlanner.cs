@@ -22,7 +22,11 @@ public sealed class RenamePlanner(TmdbClient tmdb)
             var parsed = ReleaseNameParser.ParseEpisode(Path.GetFileNameWithoutExtension(video));
             if (parsed is null)
             {
-                items.Add(new RenameItem(ItemKind.Video, video, video, ItemStatus.Skipped, "Temporada/episódio não identificado no nome."));
+                var special = folder.SpecialVideos.Contains(video)
+                    ? await PlanUnnumberedSpecialAsync(video, folder, show, episodes, ct).ConfigureAwait(false)
+                    : null;
+                if (special is not null) videoTargets[video] = Path.GetFileNameWithoutExtension(special.TargetPath);
+                items.Add(special ?? new RenameItem(ItemKind.Video, video, video, ItemStatus.Skipped, "Temporada/episódio não identificado no nome."));
                 continue;
             }
 
@@ -93,32 +97,26 @@ public sealed class RenamePlanner(TmdbClient tmdb)
         return new FolderPlan(folder, movie, lowConfidence, checkedItems, FolderPlan.StatusFor(checkedItems, lowConfidence));
     }
 
-    /// <summary>Títulos dos episódios de uma série, por temporada, com fallback para inglês.</summary>
-    private sealed class EpisodeTitles(TmdbClient tmdb, int showId, string language)
+    /// <summary>
+    /// Especial sem número (ex.: "Pilot Extended" dentro de Specials): procura o título na temporada 0.
+    /// Por ser uma suposição, o item fica com aviso e precisa ser marcado pelo usuário.
+    /// </summary>
+    private static async Task<RenameItem?> PlanUnnumberedSpecialAsync(
+        string video, LibraryFolder folder, MediaCandidate show, EpisodeTitles episodes, CancellationToken ct)
     {
-        private readonly Dictionary<(int Season, string Language), IReadOnlyDictionary<int, string?>> _seasons = [];
+        var text = ReleaseNameParser.ParseSpecialTitle(Path.GetFileNameWithoutExtension(video),
+            [folder.Name, show.PreferredTitle, show.Title, show.OriginalTitle]);
+        if (text is null) return null;
 
-        public async Task<string?> GetAsync(int season, int episode, CancellationToken ct)
-        {
-            var title = (await SeasonAsync(season, language, ct).ConfigureAwait(false)).GetValueOrDefault(episode);
-            if (!LanguagePolicy.IsGenericEpisodeTitle(title) || language == LanguagePolicy.English) return Clean(title);
+        if (await episodes.FindByTitleAsync(0, text, ct).ConfigureAwait(false) is not { } episode) return null;
 
-            var english = (await SeasonAsync(season, LanguagePolicy.English, ct).ConfigureAwait(false)).GetValueOrDefault(episode);
-            return Clean(LanguagePolicy.IsGenericEpisodeTitle(english) ? title : english);
-        }
+        var title = await episodes.GetAsync(0, episode, ct).ConfigureAwait(false);
+        var baseName = NameFormatter.EpisodeBaseName(show.PreferredTitle, 0, episode, null, title);
+        var target = Path.Combine(Path.GetDirectoryName(video)!, baseName + Path.GetExtension(video));
 
-        private async Task<IReadOnlyDictionary<int, string?>> SeasonAsync(int season, string lang, CancellationToken ct)
-        {
-            if (_seasons.TryGetValue((season, lang), out var cached)) return cached;
-
-            var data = await tmdb.GetSeasonAsync(showId, season, lang, ct).ConfigureAwait(false);
-            var map = data?.Episodes
-                .GroupBy(e => e.EpisodeNumber)
-                .ToDictionary(g => g.Key, g => g.First().Name) ?? [];
-            _seasons[(season, lang)] = map;
-            return map;
-        }
-
-        private static string? Clean(string? title) => string.IsNullOrWhiteSpace(title) ? null : title.Trim();
+        var item = new RenameItem(ItemKind.Video, video, target, ItemStatus.Ok).WithTarget(target);
+        return item.IsChange
+            ? item with { Status = ItemStatus.Warning, Message = "Especial identificado pelo título; confira antes de aplicar.", NeedsConfirmation = true }
+            : item;
     }
 }

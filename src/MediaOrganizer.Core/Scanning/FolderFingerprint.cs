@@ -11,7 +11,7 @@ namespace MediaOrganizer.Core.Scanning;
 public static class FolderFingerprint
 {
     /// <summary>Incrementar sempre que as regras de nomeação mudarem, para forçar reprocessamento.</summary>
-    public const int RulesVersion = 1;
+    public const int RulesVersion = 2; // v2: episódios especiais (temporada 0)
 
     public static string Compute(LibraryFolder folder, int tmdbId)
     {

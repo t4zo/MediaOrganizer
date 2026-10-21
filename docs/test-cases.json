@@ -23,7 +23,8 @@
     { "input": "Dark S01E01 - Secrets", "show": "Dark", "year": null, "season": 1, "episode": 1, "lastEpisode": null, "title": "Secrets" },
     { "input": "The.Office.US.2x05.Halloween.HDTV.XviD", "show": "The Office US", "year": null, "season": 2, "episode": 5, "lastEpisode": null, "title": "Halloween" },
     { "input": "show.name.s01e01e02.720p.web-dl", "show": "show name", "year": null, "season": 1, "episode": 1, "lastEpisode": 2, "title": null },
-    { "input": "The_Bear_S03E10_Forever_WEB-DL", "show": "The Bear", "year": null, "season": 3, "episode": 10, "lastEpisode": null, "title": "Forever" }
+    { "input": "The_Bear_S03E10_Forever_WEB-DL", "show": "The Bear", "year": null, "season": 3, "episode": 10, "lastEpisode": null, "title": "Forever" },
+    { "input": "Breaking.Bad.S00E01.Good.Cop.Bad.Cop.720p.WEB-DL", "show": "Breaking Bad", "year": null, "season": 0, "episode": 1, "lastEpisode": null, "title": "Good Cop Bad Cop" }
   ],
   "notEpisodes": [
     "Breaking Bad - S01 Extra - Inside Breaking Bad",
@@ -63,5 +64,12 @@
     { "input": "eng.sdh", "language": "en", "flag": "sdh" },
     { "input": "5_Spanish", "language": "es", "flag": null },
     { "input": "", "language": null, "flag": null }
+  ],
+  "specialTitles": [
+    { "input": "Breaking Bad - Pilot Extended", "shows": ["Breaking Bad"], "output": "Pilot Extended" },
+    { "input": "Breaking.Bad.Good.Cop.Bad.Cop.720p.WEB-DL", "shows": ["Breaking Bad"], "output": "Good Cop Bad Cop" },
+    { "input": "Better.Call.Saul.Employee.Training.1080p", "shows": ["Better Call Saul", "Breaking Bad"], "output": "Employee Training" },
+    { "input": "Making of the Final Season", "shows": ["Game of Thrones"], "output": "Making of the Final Season" },
+    { "input": "Breaking Bad 1080p", "shows": ["Breaking Bad"], "output": null }
   ]
 }

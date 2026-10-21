@@ -20,7 +20,7 @@ public sealed class LibraryAnalyzer(MediaMatcher matcher, RenamePlanner planner,
     private const int MaxParallelFolders = 4;
 
     public LibraryScanner CreateScanner() =>
-        new(settings.Current.IgnoredFolders, new JunkDetector(settings.Current.JunkPatterns));
+        new(settings.Current.IgnoredFolders, new JunkDetector(settings.Current.JunkPatterns), settings.Current.IncludeSpecials);
 
     public IReadOnlyList<LibraryFolder> Scan(string root, MediaKind kind) => CreateScanner().Scan(root, kind);
 

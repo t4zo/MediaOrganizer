@@ -27,6 +27,11 @@ public sealed record SubtitleLanguageCase(string Input, string? Language, string
     public override string ToString() => $"'{Input}'";
 }
 
+public sealed record SpecialTitleCase(string Input, IReadOnlyList<string> Shows, string? Output)
+{
+    public override string ToString() => Input;
+}
+
 /// <summary>Casos de docs/test-cases.json, compartilhados com futuros ports.</summary>
 public sealed record ConformanceCases(
     IReadOnlyList<EpisodeCase> Episodes,
@@ -34,7 +39,8 @@ public sealed record ConformanceCases(
     IReadOnlyList<MovieCase> Movies,
     IReadOnlyList<SanitizeCase> Sanitize,
     IReadOnlyList<FormatCase> Format,
-    IReadOnlyList<SubtitleLanguageCase> SubtitleLanguages)
+    IReadOnlyList<SubtitleLanguageCase> SubtitleLanguages,
+    IReadOnlyList<SpecialTitleCase> SpecialTitles)
 {
     private static readonly Lazy<ConformanceCases> Instance = new(() =>
         JsonSerializer.Deserialize<ConformanceCases>(

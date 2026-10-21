@@ -20,7 +20,8 @@ Uma **raiz** é uma pasta escolhida pelo usuário, do tipo `Series` ou `Movie`.
 
 ### 1.3 Regras de varredura
 - Ignorar entradas ocultas/de sistema e links simbólicos; ignorar pastas cujo nome começa com `.` ou `$`.
-- Ignorar (em qualquer nível) pastas cujo nome esteja na lista configurável, sem diferenciar maiúsculas: `Extras, Featurettes, Behind The Scenes, Deleted Scenes, Interviews, Trailers, Bonus, Specials, AudioBooks, Sample, Samples`.
+- Ignorar (em qualquer nível) pastas cujo nome esteja na lista configurável, sem diferenciar maiúsculas: `Extras, Featurettes, Behind The Scenes, Deleted Scenes, Interviews, Trailers, Bonus, AudioBooks, Sample, Samples`.
+- **Pastas de especiais** — nome casa `^(specials?|season\s*0+|s0+)$` (sem diferenciar maiúsculas): são varridas se a opção `includeSpecials` estiver ligada (padrão) e ignoradas se estiver desligada, **independentemente** da lista acima (configurações da v1.0 ainda trazem `Specials` nela). Vídeos dentro delas, em qualquer nível, são marcados como *vídeos de especiais* (seção 2.6).
 - Classificação de cada arquivo, nesta ordem:
   1. **Lixo** se o nome (com extensão) casar com algum padrão curinga (`*`, `?`, sem diferenciar maiúsculas) da lista: `*.nfo, *.url, *.website, *.exe, *rarbg*.txt, *psarips*.txt, www.*.txt, *torrent*.txt, *.torrent, sample*.mkv, sample*.mp4, *-sample.*, Thumbs.db`.
   2. **Vídeo**: `.mkv .mp4 .m4v .avi .mov .wmv .ts .m2ts .webm .mpg .mpeg .flv`.
@@ -61,14 +62,24 @@ Uma **raiz** é uma pasta escolhida pelo usuário, do tipo `Series` ou `Movie`.
 web-?rip|web-?dl|blu-?ray|bdrip|brrip|bdremux|remux|hdtv|dvdrip|dvd|hdrip|
 x264|x265|h ?264|h ?265|hevc|avc|xvid|av1|
 aac\d?|ac3|eac3|ddp?\d?|dd\+|dts(?:-hd)?|truehd|atmos|flac|opus|mp3|\dch|
-repack\d?|proper|internal|extended|unrated|remastered|imax|dublado|legendado|
-amzn|nf|dsnp|hmax|atvp|pcok|pmtp
+repack\d?|proper|internal|dublado|legendado|
+amzn|nf|dsnp|hmax|atvp|pcok|pmtp|
+extended|unrated|remastered|imax          ← palavras de edição
 ```
 
 ### 2.5 Filmes
 1. Normalizar (2.1) e cortar na primeira tag (2.4).
 2. Procurar anos `[\(\[]?\b(19|20)\d\d\b[\)\]]?` que **não** estejam na posição 0; o **último** é o ano do filme e o título é o texto antes dele (aparado). Sem ano → título = texto inteiro.
    - `2001 A Space Odyssey 1968` → (`2001 A Space Odyssey`, 1968); `Blade Runner 2049 (2017)` → (`Blade Runner 2049`, 2017).
+
+### 2.6 Episódios especiais (temporada 0)
+- **Com número** (`S00E01`, em qualquer pasta): seguem as regras normais com temporada 0; os títulos vêm de `tv/{id}/season/0`.
+- **Sem número**, apenas para *vídeos de especiais* (1.3):
+  1. Texto útil: normalizar (2.1), cortar na primeira tag técnica **sem** as palavras de edição (`Pilot Extended` mantém `Extended`) e remover do início o nome da série — o primeiro, do mais longo para o mais curto, entre: nome da pasta, título preferido, título em inglês e título original. Vazio → sem sugestão.
+  2. Normalizar o texto e os títulos da temporada 0 (no idioma da obra e em inglês; títulos genéricos são descartados) com a função de 3.2. Texto normalizado com menos de 4 caracteres → sem sugestão.
+  3. Igualdade vence; senão, o título mais longo (≥ 4 caracteres) contido no texto ou que contenha o texto.
+  4. Encontrado: destino `Série S00Exx - <título oficial>` com status *Aviso* ("Especial identificado pelo título; confira antes de aplicar.") e `needsConfirmation = true` — o item começa **desmarcado**. Editar o nome remove a marca. Não encontrado: *Ignorado*.
+- Casos de conformidade: seção `specialTitles` de `test-cases.json`.
 
 ---
 
@@ -159,7 +170,7 @@ Idioma/flag do trecho: se casar `pt[\s._-]?br|\bpob\b|brazil` → `pt-BR`. Quebr
 
 ## 6. Plano, status e conflitos
 
-Cada item: `{tipo: Video|Subtitle|Folder, origem, destino, status, mensagem}`.
+Cada item: `{tipo: Video|Subtitle|Folder, origem, destino, status, mensagem, needsConfirmation}`. Itens com `needsConfirmation` começam desmarcados na prévia.
 
 | Status | Significado | Aplicável |
 | --- | --- | --- |
@@ -218,7 +229,7 @@ Lixo é enviado à Lixeira do sistema (Windows: Shell `SHFileOperation` com `FOF
 + para cada arquivo (vídeos + legendas), ordenado por comparação ordinal:
   "<caminho relativo à pasta, com '/'>|<tamanho em bytes>\n"
 ```
-`RulesVersion` = 1 (incrementar quando as regras de nomeação mudarem). A data de modificação **não** entra (precisão diferente entre NTFS/exFAT/APFS/ext4). Para filmes soltos o caminho é relativo à raiz.
+`RulesVersion` = 2 (v1.0 = 1; v1.1 = 2 por causa dos especiais — incrementar sempre que as regras de nomeação mudarem). A data de modificação **não** entra (precisão diferente entre NTFS/exFAT/APFS/ext4). Para filmes soltos o caminho é relativo à raiz.
 
 **Quando gravar**: (a) ao analisar uma pasta que já está toda no padrão (`NoChanges`) com correspondência confiável; (b) após aplicar, se **todas** as mudanças da pasta foram aplicadas com sucesso — recalculado a partir da pasta reescaneada (no caso de filme, já com o novo nome).
 
@@ -252,6 +263,7 @@ Pasta `data/`, resolvida nesta ordem:
   "lastLibraryPath": "E:\\Series",
   "lastKind": "Series",
   "renameSubtitles": true,
+  "includeSpecials": true,
   "ignoredFolders": ["Extras", "Featurettes", "…"],
   "junkPatterns": ["*.nfo", "…"],
   "matches": { "Series/Dark": 70523, "Series/Round 6": 93405 }
