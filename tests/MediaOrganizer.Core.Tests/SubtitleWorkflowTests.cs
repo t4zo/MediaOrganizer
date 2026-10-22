@@ -60,6 +60,7 @@ public sealed class SubtitleWorkflowTests : IDisposable
     private readonly SubtitleProviderSet _providers;
     private readonly SubtitleAnalyzer _analyzer;
     private readonly SubtitleDownloader _downloader;
+    private readonly TmdbClient _client;
     private readonly List<string> _trash = [];
 
     public SubtitleWorkflowTests()
@@ -72,7 +73,7 @@ public sealed class SubtitleWorkflowTests : IDisposable
         });
         _processed = new ProcessedStore(_library.Data);
         _history = new HistoryStore(_library.Data);
-        var client = new TmdbClient(new HttpClient(_tmdb), () => _settings.Current.TmdbApiKey);
+        var client = _client = new TmdbClient(new HttpClient(_tmdb), () => _settings.Current.TmdbApiKey);
         _organizer = new LibraryAnalyzer(new MediaMatcher(client), new RenamePlanner(client), _settings, _processed);
         _providers = new SubtitleProviderSet([_first, _second], TimeProvider.System);
         _analyzer = new SubtitleAnalyzer(client, _settings, _providers);
@@ -288,6 +289,39 @@ public sealed class SubtitleWorkflowTests : IDisposable
         var plan = await _analyzer.AnalyzeFolderAsync(folder, false, TestContext.Current.CancellationToken);
 
         Assert.Equal(FolderSubtitleStatus.NoMatch, plan.Status);
+        Assert.Empty(_first.Searches);
+    }
+
+    [Fact]
+    public async Task NewFolderIsIdentifiedWithoutVisitingOrganize()
+    {
+        _tmdb.Search("Other", "en-US", (2, "Other", "Other", "en")).Show(2, "Other", "Other", "en")
+            .Route("tv/2/external_ids", """{"imdb_id":"tt0000002"}""");
+        _library.File("Other/Other S01E01.mkv");
+        _first.Has(1, "pt-BR", hash: true);
+        var analyzer = new SubtitleAnalyzer(_client, _settings, _providers, _organizer);
+        var folder = Assert.Single(_organizer.Scan(Root, MediaKind.Series));
+
+        var plan = await analyzer.AnalyzeFolderAsync(folder, false, TestContext.Current.CancellationToken);
+
+        Assert.Equal(FolderSubtitleStatus.Missing, plan.Status);
+        Assert.Equal(2, _settings.GetMatch("Series/Other")); // memorizada para as outras telas
+        Assert.Equal("tt0000002", Assert.Single(_first.Searches).ImdbId);
+    }
+
+    [Fact]
+    public async Task UncertainIdentificationIsNotUsed()
+    {
+        _tmdb.Search("Other", "en-US", (3, "Completely Different", "Completely Different", "en"));
+        _library.File("Other/Other S01E01.mkv");
+        var analyzer = new SubtitleAnalyzer(_client, _settings, _providers, _organizer);
+        var folder = Assert.Single(_organizer.Scan(Root, MediaKind.Series));
+
+        var plan = await analyzer.AnalyzeFolderAsync(folder, false, TestContext.Current.CancellationToken);
+
+        Assert.Equal(FolderSubtitleStatus.NoMatch, plan.Status);
+        Assert.Contains("Identificar", plan.Message, StringComparison.Ordinal);
+        Assert.Null(_settings.GetMatch("Series/Other"));
         Assert.Empty(_first.Searches);
     }
 

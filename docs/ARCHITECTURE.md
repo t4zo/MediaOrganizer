@@ -58,7 +58,7 @@ LibraryFolder ──▶ Match (TMDb) ──▶ Plan (nomes + legendas + conflito
 ## Fluxo da Coleção
 
 ```
-Scan (mesmas regras) ──▶ correspondência memorizada? ──não──▶ NoMatch (sem rede)
+Scan (mesmas regras) ──▶ correspondência memorizada? ──não──▶ busca do Organizar (confiável → memoriza; incerta → NoMatch)
                                    │ sim
                                    ▼
           tv/{id} (temporadas) ──▶ season/{n} (episódios + air_date) ──▶ SeriesReport
@@ -66,12 +66,12 @@ Scan (mesmas regras) ──▶ correspondência memorizada? ──não──▶ 
                                      CollectionViewModel (lista + detalhe) ◀┘──▶ CollectionExporter (CSV/TXT)
 ```
 
-`CollectionAnalyzer` reutiliza `LibraryScanner`, `ReleaseNameParser`, `EpisodeTitles` (títulos na política de idioma) e o `TmdbClient` com cache; "hoje" vem de um `TimeProvider` injetado (data fixa nos testes). A identificação de séries continua centralizada nas correspondências do `SettingsStore`, compartilhadas com a tela Organizar.
+`CollectionAnalyzer` reutiliza `LibraryScanner`, `ReleaseNameParser`, `EpisodeTitles` (títulos na política de idioma) e o `TmdbClient` com cache; "hoje" vem de um `TimeProvider` injetado (data fixa nos testes). A identificação continua centralizada nas correspondências do `SettingsStore`, compartilhadas com a tela Organizar; uma pasta nova é identificada por `LibraryAnalyzer.ResolveMatchAsync` (a mesma busca do Organizar), que só memoriza correspondências confiáveis.
 
 ## Fluxo das Legendas
 
 ```
-Scan ──▶ correspondência memorizada? ──não──▶ NoMatch (sem rede)
+Scan ──▶ correspondência memorizada? ──não──▶ busca do Organizar (confiável → memoriza; incerta → NoMatch)
               │ sim
               ▼
    IMDb ID (TMDb external_ids / movie) ──▶ SubtitleInventory: externas (SubtitleMatcher) + embutidas (MatroskaReader)

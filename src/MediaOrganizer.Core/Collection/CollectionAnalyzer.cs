@@ -8,9 +8,10 @@ namespace MediaOrganizer.Core.Collection;
 
 /// <summary>
 /// Compara os episódios de cada série da biblioteca com a lista oficial do TMDb e aponta os que faltam.
-/// Usa as correspondências memorizadas pela tela Organizar; séries sem correspondência não consultam o TMDb.
+/// Usa as correspondências memorizadas pela tela Organizar; sem uma, identifica a série com a mesma busca
+/// (<paramref name="identifier"/>) e memoriza se for confiável.
 /// </summary>
-public sealed class CollectionAnalyzer(TmdbClient tmdb, SettingsStore settings, TimeProvider time)
+public sealed class CollectionAnalyzer(TmdbClient tmdb, SettingsStore settings, TimeProvider time, LibraryAnalyzer? identifier = null)
 {
     private const int MaxParallelSeries = 4;
 
@@ -20,12 +21,13 @@ public sealed class CollectionAnalyzer(TmdbClient tmdb, SettingsStore settings, 
 
     public async Task<SeriesReport> AnalyzeSeriesAsync(LibraryFolder folder, bool refresh, CancellationToken ct)
     {
-        if (settings.GetMatch(folder.MatchKey) is not { } id)
-            return new SeriesReport(folder, null, [], CollectionStatus.NoMatch,
-                "Série ainda não identificada. Use \"Identificar\" ou analise a pasta na tela Organizar.");
-
         try
         {
+            var (found, reason) = identifier is null
+                ? (settings.GetMatch(folder.MatchKey), "Série ainda não identificada. Use \"Identificar\" ou analise a pasta na tela Organizar.")
+                : await identifier.ResolveMatchAsync(folder, ct).ConfigureAwait(false);
+            if (found is not { } id) return new SeriesReport(folder, null, [], CollectionStatus.NoMatch, reason ?? "Série ainda não identificada.");
+
             if (await tmdb.GetTvAsync(id, LanguagePolicy.English, refresh, ct).ConfigureAwait(false) is not { } details)
                 return new SeriesReport(folder, null, [], CollectionStatus.NoMatch, "A série memorizada não existe mais no TMDb. Identifique-a novamente.");
 

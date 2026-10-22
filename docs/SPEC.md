@@ -260,9 +260,9 @@ Lixo é enviado à Lixeira do sistema (Windows: Shell `SHFileOperation` com `FOF
 
 ## 8A. Coleção (episódios faltando)
 
-Somente para séries. Usa a mesma varredura (1.1–1.3) e as **correspondências memorizadas** (3.3); não faz busca automática.
+Somente para séries. Usa a mesma varredura (1.1–1.3) e as **correspondências memorizadas** (3.3).
 
-1. Pasta sem correspondência memorizada → status `NoMatch`, sem nenhuma chamada ao TMDb. Erro de rede → `Error`.
+1. Pasta sem correspondência memorizada → identificação automática com as mesmas consultas e pontuação da tela Organizar (3.1–3.2). Confiável → memorizada (3.3) e usada. Incerta ou não encontrada → status `NoMatch` com a mensagem para "Identificar" (a incerta não é memorizada). Erro de rede → `Error`.
 2. Detalhes: `tv/{id}?language=en-US`. Temporadas = `seasons[].season_number` (ou `1..number_of_seasons` se ausente) ∪ temporadas presentes nos arquivos. A temporada 0 só entra com `includeSpecials` ligado.
 3. Episódios de cada temporada: `tv/{id}/season/{n}` no idioma da seção 4; títulos com o mesmo fallback para inglês.
 4. **Presentes**: `SxxExx` dos vídeos (2.2); `S04E01-E02` conta os dois.
@@ -288,7 +288,7 @@ Somente para séries. Usa a mesma varredura (1.1–1.3) e as **correspondências
 
 ## 8B. Legendas faltantes (buscar e baixar)
 
-Séries e filmes. Usa a mesma varredura (1.1–1.3) e as **correspondências memorizadas** (3.3), como a Coleção: pasta sem correspondência → `NoMatch`, sem rede.
+Séries e filmes. Usa a mesma varredura (1.1–1.3) e as **correspondências memorizadas** (3.3); sem uma, identifica automaticamente como a Coleção (8A, passo 1).
 
 ### 8B.1 Idiomas desejados
 Lista `subtitleLanguages` em ordem de prioridade (padrão `pt-BR`, `en`), normalizada: `pt-br`, `PT_BR`, `pob` → `pt-BR`; `EN`, `eng`, `English`, `en-US`, `en-GB` → `en` (inglês não diferencia região); `por` → `pt`. Com `downloadForcedSubtitles`, cada idioma também pede a versão **forçada**. Forçada e normal são tipos diferentes; SDH conta como normal.

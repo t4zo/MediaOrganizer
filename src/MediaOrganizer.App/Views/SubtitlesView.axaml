@@ -83,7 +83,7 @@
         <PathIcon Data="{x:Static app:Icons.Subtitle}" Width="56" Height="56" Classes="accent" HorizontalAlignment="Center" />
         <TextBlock Classes="h2" Text="Faltam legendas?" HorizontalAlignment="Center" />
         <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center"
-                   Text="Clique em Procurar. Buscar não gasta a cota diária dos sites: só o que você baixar conta. As séries e filmes precisam estar identificados (tela Organizar ou “Identificar”)." />
+                   Text="Clique em Procurar. Buscar não gasta a cota diária dos sites: só o que você baixar conta. Títulos ainda não identificados são buscados no TMDb; se a correspondência for incerta, use “Identificar”." />
       </StackPanel>
     </Border>
 

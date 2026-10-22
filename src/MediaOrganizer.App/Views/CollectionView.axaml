@@ -59,7 +59,7 @@
         <PathIcon Data="{x:Static app:Icons.Checklist}" Width="56" Height="56" Classes="accent" HorizontalAlignment="Center" />
         <TextBlock Classes="h2" Text="Sua coleção está completa?" HorizontalAlignment="Center" />
         <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center"
-                   Text="Clique em Verificar. As séries precisam estar identificadas — analise a pasta na tela Organizar primeiro, ou use “Identificar” aqui." />
+                   Text="Clique em Verificar. Séries ainda não identificadas são buscadas no TMDb; se a correspondência for incerta, use “Identificar”." />
       </StackPanel>
     </Border>
 

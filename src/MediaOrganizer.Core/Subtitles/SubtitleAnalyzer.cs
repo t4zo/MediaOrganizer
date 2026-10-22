@@ -8,9 +8,10 @@ namespace MediaOrganizer.Core.Subtitles;
 /// <summary>
 /// Para cada série/filme: descobre as legendas que faltam e busca candidatos nos sites, na ordem
 /// OpenSubtitles → SubDL → SubSource. Só busca (não gasta cota); baixar é com o <see cref="SubtitleDownloader"/>.
-/// Usa as correspondências memorizadas pela tela Organizar, como a Coleção.
+/// Usa as correspondências memorizadas pela tela Organizar; sem uma, identifica o título com a mesma busca
+/// (<paramref name="identifier"/>) e memoriza se for confiável, como a Coleção.
 /// </summary>
-public sealed class SubtitleAnalyzer(TmdbClient tmdb, SettingsStore settings, SubtitleProviderSet providers)
+public sealed class SubtitleAnalyzer(TmdbClient tmdb, SettingsStore settings, SubtitleProviderSet providers, LibraryAnalyzer? identifier = null)
 {
     private const int MaxParallelFolders = 4;
 
@@ -20,10 +21,6 @@ public sealed class SubtitleAnalyzer(TmdbClient tmdb, SettingsStore settings, Su
 
     public async Task<FolderSubtitlePlan> AnalyzeFolderAsync(LibraryFolder folder, bool refresh, CancellationToken ct)
     {
-        if (settings.GetMatch(folder.MatchKey) is not { } id)
-            return FolderSubtitlePlan.Failed(folder, FolderSubtitleStatus.NoMatch,
-                "Ainda não identificado. Use \"Identificar\" ou analise a pasta na tela Organizar.");
-
         var current = settings.Current;
         var wanted = SubtitleInventory.WantedFrom(current);
         if (wanted.Count == 0)
@@ -31,6 +28,11 @@ public sealed class SubtitleAnalyzer(TmdbClient tmdb, SettingsStore settings, Su
 
         try
         {
+            var (found, reason) = identifier is null
+                ? (settings.GetMatch(folder.MatchKey), "Ainda não identificado. Use \"Identificar\" ou analise a pasta na tela Organizar.")
+                : await identifier.ResolveMatchAsync(folder, ct).ConfigureAwait(false);
+            if (found is not { } id) return FolderSubtitlePlan.Failed(folder, FolderSubtitleStatus.NoMatch, reason ?? "Ainda não identificado.");
+
             var (match, imdbId) = await LookupAsync(folder.Kind, id, ct).ConfigureAwait(false);
             if (match is null)
                 return FolderSubtitlePlan.Failed(folder, FolderSubtitleStatus.NoMatch, "O título memorizado não existe mais no TMDb. Identifique-o novamente.");

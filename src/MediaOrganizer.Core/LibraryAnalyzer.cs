@@ -103,6 +103,25 @@ public sealed class LibraryAnalyzer(MediaMatcher matcher, RenamePlanner planner,
 
     public void ForgetProcessed(IEnumerable<string> folderKeys) => processed.Remove(folderKeys);
 
+    /// <summary>
+    /// Correspondência da pasta para as telas Coleção e Legendas: a memorizada ou, sem ela, a mesma busca da tela
+    /// Organizar. Só uma correspondência confiável é memorizada e usada; incerta, devolve a mensagem para "Identificar".
+    /// </summary>
+    /// <returns>O id do TMDb, ou <c>null</c> com o motivo.</returns>
+    public async Task<(int? Id, string? Message)> ResolveMatchAsync(LibraryFolder folder, CancellationToken ct)
+    {
+        if (settings.GetMatch(folder.MatchKey) is { } id) return (id, null);
+        if (folder.Videos.Count == 0) return (null, "Nenhum vídeo nesta pasta.");
+
+        var match = await FindMatchAsync(folder, ct).ConfigureAwait(false);
+        if (match is null) return (null, "Não encontrado no TMDb. Use \"Identificar\" para buscar manualmente.");
+        if (match.LowConfidence)
+            return (null, $"Não foi possível identificar com certeza (talvez \"{match.Candidate.DisplayName}\"). Use \"Identificar\" para confirmar.");
+
+        settings.SetMatch(folder.MatchKey, match.Candidate.Id);
+        return (match.Candidate.Id, null);
+    }
+
     private Task<MatchResult?> FindMatchAsync(LibraryFolder folder, CancellationToken ct)
     {
         var (folderTitle, folderYear) = CleanName(folder.Name);
