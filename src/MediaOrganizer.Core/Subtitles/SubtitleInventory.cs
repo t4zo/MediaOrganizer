@@ -6,7 +6,9 @@ using MediaOrganizer.Core.State;
 namespace MediaOrganizer.Core.Subtitles;
 
 /// <summary>Uma legenda que o vídeo já tem: arquivo externo (<see cref="Path"/>) ou faixa embutida no MKV.</summary>
-public sealed record ExistingSubtitle(SubtitleLanguage Language, string? Path, bool Embedded);
+/// <param name="TrackIndex">Faixa embutida: posição no MKV (o "track ID" do mkvmerge/mkvextract).</param>
+/// <param name="CodecId">Faixa embutida: "S_TEXT/UTF8", "S_TEXT/ASS", "S_HDMV/PGS"...</param>
+public sealed record ExistingSubtitle(SubtitleLanguage Language, string? Path, bool Embedded, int? TrackIndex = null, string? CodecId = null);
 
 /// <summary>Legendas de um vídeo e o que falta em relação aos idiomas desejados.</summary>
 /// <param name="HasPortugueseWithoutRegion">Há legenda "pt"/"por" sem região: pode ser pt-PT ou pt-BR.</param>
@@ -63,7 +65,7 @@ public static class SubtitleInventory
         {
             foreach (var track in MatroskaReader.ReadTracks(video))
             {
-                if (FromTrack(track) is { } language) existing.Add(new ExistingSubtitle(language, null, Embedded: true));
+                if (FromTrack(track) is { } language) existing.Add(new ExistingSubtitle(language, null, Embedded: true, track.Index, track.CodecId));
             }
         }
 

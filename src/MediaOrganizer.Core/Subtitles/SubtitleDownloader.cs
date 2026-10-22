@@ -19,9 +19,11 @@ public sealed record ExistingEmbed(FolderSubtitlePlan Folder, string VideoPath, 
 /// no journal <b>antes</b> de gravar, para o lote aparecer no Histórico e poder ser desfeito.
 /// </summary>
 public sealed class SubtitleDownloader(SubtitleProviderSet providers, HistoryStore history, ProcessedStore processed, SettingsStore settings,
-    LibraryAnalyzer library, SubtitleEmbedder? embedder = null)
+    LibraryAnalyzer library, SubtitleEmbedder? embedder = null, SubtitleContentCache? contentCache = null)
 {
     private const string TempSuffix = ".mo-tmp";
+
+    private readonly SubtitleFetcher _fetcher = new(providers, contentCache);
 
     /// <summary>Uma unidade de trabalho: um arquivo de legenda, ou um vídeo que recebe faixas.</summary>
     private sealed record Unit(JournalOperation Operation, IReadOnlyList<SubtitleDownload> Downloads, string? EmbedVideo);
@@ -269,19 +271,8 @@ public sealed class SubtitleDownloader(SubtitleProviderSet providers, HistorySto
         }
     }
 
-    /// <summary>Baixa (ou falha sem rede se a cota do site já acabou neste lote) e converte texto para UTF-8.</summary>
-    private async Task<byte[]> FetchAsync(SubtitleDownload download, CancellationToken ct)
-    {
-        var provider = providers.Find(download.Candidate.Provider)
-                       ?? throw new IOException($"Site {download.Candidate.Provider} indisponível.");
-        if (providers.DisabledReason(provider) is { } reason)
-            throw new SubtitleProviderException(provider.Name, SubtitleProviderError.QuotaExceeded, reason);
-
-        var file = await provider.DownloadAsync(download.Candidate, download.Query, ct).ConfigureAwait(false);
-        if (file.Content.Length == 0)
-            throw new SubtitleProviderException(provider.Name, SubtitleProviderError.InvalidContent, "O site devolveu um arquivo vazio.");
-        return SubtitleText.IsText(file.Extension) ? SubtitleText.ToUtf8(file.Content) : file.Content;
-    }
+    /// <summary>Baixa (ou reaproveita a da verificação de sincronia; falha sem rede se a cota do site já acabou) e converte texto para UTF-8.</summary>
+    private Task<byte[]> FetchAsync(SubtitleDownload download, CancellationToken ct) => _fetcher.FetchAsync(download.Candidate, download.Query, ct);
 
     /// <summary>Grava num temporário e move para o destino sem sobrescrever.</summary>
     internal static void Write(string target, byte[] content)

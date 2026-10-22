@@ -62,6 +62,12 @@ public sealed partial class SettingsViewModel(
     [ObservableProperty]
     public partial string? OpenSubtitlesStatus { get; private set; }
 
+    /// <summary>Opções do OpenSubtitles baixadas por clique em "Verificar sincronia" (NumericUpDown usa decimal).</summary>
+    [ObservableProperty]
+    public partial decimal? OpenSubtitlesSyncLimit { get; set; } = SubtitleSyncChecker.DefaultOpenSubtitlesLimit;
+
+    public int MaxSyncLimit => SubtitleSyncChecker.MaxOpenSubtitlesLimit;
+
     [RelayCommand]
     private async Task TestOpenSubtitlesAsync()
     {
@@ -238,6 +244,7 @@ public sealed partial class SettingsViewModel(
         OpenSubtitlesApiKey = s.OpenSubtitles.ApiKey ?? "";
         OpenSubtitlesUsername = s.OpenSubtitles.Username ?? "";
         OpenSubtitlesPassword = s.OpenSubtitles.Password ?? "";
+        OpenSubtitlesSyncLimit = s.OpenSubtitles.SyncCheckLimit;
         OpenSubtitlesStatus = null;
         SubDlEnabled = s.SubDl.Enabled;
         SubDlApiKey = s.SubDl.ApiKey ?? "";
@@ -292,6 +299,7 @@ public sealed partial class SettingsViewModel(
                 ApiKey = Blank(OpenSubtitlesApiKey),
                 Username = Blank(OpenSubtitlesUsername),
                 Password = string.IsNullOrEmpty(OpenSubtitlesPassword) ? null : OpenSubtitlesPassword,
+                SyncCheckLimit = (int)Math.Clamp(OpenSubtitlesSyncLimit ?? SubtitleSyncChecker.DefaultOpenSubtitlesLimit, 1, SubtitleSyncChecker.MaxOpenSubtitlesLimit),
             };
             s.SubDl = new SubDlSettings { Enabled = SubDlEnabled, ApiKey = Blank(SubDlApiKey) };
             s.SubSource = new SubSourceSettings { Enabled = SubSourceEnabled, ApiKey = Blank(SubSourceApiKey) };

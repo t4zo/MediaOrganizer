@@ -10,6 +10,12 @@ public sealed class OpenSubtitlesSettings
     public string? ApiKey { get; set; }
     public string? Username { get; set; }
     public string? Password { get; set; }
+
+    /// <summary>
+    /// Opções do OpenSubtitles baixadas a cada clique em "Verificar sincronia" (a cota dele é pequena).
+    /// SubDL e SubSource não têm esse limite: todas as opções deles são verificadas.
+    /// </summary>
+    public int SyncCheckLimit { get; set; } = SubtitleSyncChecker.DefaultOpenSubtitlesLimit;
 }
 
 public sealed class SubDlSettings

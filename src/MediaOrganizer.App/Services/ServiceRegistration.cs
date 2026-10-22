@@ -65,6 +65,14 @@ internal static class ServiceRegistration
         services.AddSingleton(sp => new SubtitleEmbedder(
             sp.GetRequiredService<IMkvMergeRunner>(), () => sp.GetRequiredService<SettingsStore>().Current.MkvMergePath));
         services.AddSingleton<SubtitleAnalyzer>();
+        // Verificação de sincronia: legendas baixadas e tempos das referências ficam em cache para não gastar cota de novo.
+        services.AddSingleton(new SubtitleContentCache(Path.Combine(paths.CacheDirectory, "subtitle-files"), SubtitleContentCache.DefaultTimeToLive));
+        services.AddSingleton(sp => new SubtitleReferenceProvider(
+            sp.GetRequiredService<IMkvMergeRunner>(), () => sp.GetRequiredService<SettingsStore>().Current.MkvMergePath,
+            Path.Combine(paths.CacheDirectory, "sync-ref")));
+        services.AddSingleton(sp => new SubtitleSyncChecker(
+            sp.GetRequiredService<SubtitleProviderSet>(), sp.GetRequiredService<SubtitleReferenceProvider>(), sp.GetRequiredService<SubtitleContentCache>(),
+            () => sp.GetRequiredService<SettingsStore>().Current.OpenSubtitles.SyncCheckLimit));
         services.AddSingleton<SubtitleDownloader>();
 
         services.AddSingleton<MediaMatcher>();

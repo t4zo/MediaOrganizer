@@ -69,10 +69,14 @@ public sealed class MkvMergeRunner : IMkvMergeRunner
     }
 }
 
-/// <summary>Procura o mkvmerge: caminho configurado, PATH e locais padrão de instalação do MKVToolNix.</summary>
+/// <summary>Procura as ferramentas do MKVToolNix: caminho configurado, PATH e locais padrão de instalação.</summary>
 public static class MkvMergeLocator
 {
-    public static string ExecutableName => OperatingSystem.IsWindows() ? "mkvmerge.exe" : "mkvmerge";
+    public static string ExecutableName => Executable("mkvmerge");
+
+    public static string ExtractExecutableName => Executable("mkvextract");
+
+    private static string Executable(string tool) => OperatingSystem.IsWindows() ? tool + ".exe" : tool;
 
     public static string? Find(string? configured)
     {
@@ -84,13 +88,26 @@ public static class MkvMergeLocator
             return null;
         }
 
-        return Candidates().FirstOrDefault(File.Exists);
+        return Candidates("mkvmerge").FirstOrDefault(File.Exists);
     }
 
-    private static IEnumerable<string> Candidates()
+    /// <summary>
+    /// O mkvextract vem junto com o mkvmerge: com caminho configurado, só na pasta dele; sem, na pasta do mkvmerge
+    /// encontrado e depois nos mesmos locais de busca.
+    /// </summary>
+    public static string? FindExtract(string? configuredMkvMerge)
     {
+        var merge = Find(configuredMkvMerge);
+        if (merge is not null && Path.Combine(Path.GetDirectoryName(merge)!, ExtractExecutableName) is var sibling && File.Exists(sibling))
+            return sibling;
+        return string.IsNullOrWhiteSpace(configuredMkvMerge) ? Candidates("mkvextract").FirstOrDefault(File.Exists) : null;
+    }
+
+    private static IEnumerable<string> Candidates(string tool)
+    {
+        var name = Executable(tool);
         foreach (var dir in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
-            yield return Path.Combine(dir.Trim('"'), ExecutableName);
+            yield return Path.Combine(dir.Trim('"'), name);
 
         if (OperatingSystem.IsWindows())
         {
@@ -101,24 +118,24 @@ public static class MkvMergeLocator
                          Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs"),
                      })
             {
-                if (root.Length > 0) yield return Path.Combine(root, "MKVToolNix", ExecutableName);
+                if (root.Length > 0) yield return Path.Combine(root, "MKVToolNix", name);
             }
         }
         else if (OperatingSystem.IsMacOS())
         {
-            yield return "/opt/homebrew/bin/mkvmerge";
-            yield return "/usr/local/bin/mkvmerge";
+            yield return "/opt/homebrew/bin/" + tool;
+            yield return "/usr/local/bin/" + tool;
             if (Directory.Exists("/Applications"))
             {
                 foreach (var app in Directory.EnumerateDirectories("/Applications", "MKVToolNix*.app").OrderDescending(StringComparer.Ordinal))
-                    yield return Path.Combine(app, "Contents", "MacOS", "mkvmerge");
+                    yield return Path.Combine(app, "Contents", "MacOS", tool);
             }
         }
         else
         {
-            yield return "/usr/bin/mkvmerge";
-            yield return "/usr/local/bin/mkvmerge";
-            yield return "/snap/bin/mkvmerge";
+            yield return "/usr/bin/" + tool;
+            yield return "/usr/local/bin/" + tool;
+            yield return "/snap/bin/" + tool;
         }
     }
 }

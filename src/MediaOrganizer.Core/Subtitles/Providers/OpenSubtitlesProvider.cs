@@ -44,8 +44,8 @@ public sealed class OpenSubtitlesProvider(HttpClient http, Func<OpenSubtitlesSet
         {
             using var response = await ProviderHttp.SendAsync(http, () => Request(HttpMethod.Get, Url($"subtitles?{queryString}")), Name, ct)
                 .ConfigureAwait(false);
-            ThrowIfError(response);
             json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            ThrowIfError(response, json);
             cache?.Set(cacheKey, json);
         }
 
@@ -148,7 +148,7 @@ public sealed class OpenSubtitlesProvider(HttpClient http, Func<OpenSubtitlesSet
 
         var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.NotAcceptable) throw QuotaExceeded(json);
-        ThrowIfError(response);
+        ThrowIfError(response, json);
 
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
@@ -186,9 +186,10 @@ public sealed class OpenSubtitlesProvider(HttpClient http, Func<OpenSubtitlesSet
             if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
                 throw new SubtitleProviderException(Name, SubtitleProviderError.AuthenticationFailed,
                     "Usuário ou senha do OpenSubtitles recusados. Verifique nas Configurações.");
-            ThrowIfError(response);
+            var loginJson = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            ThrowIfError(response, loginJson);
 
-            using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
+            using var document = JsonDocument.Parse(loginJson);
             var root = document.RootElement;
             _token = root.Str("token");
             _tokenFor = identity;
@@ -223,7 +224,8 @@ public sealed class OpenSubtitlesProvider(HttpClient http, Func<OpenSubtitlesSet
         return request;
     }
 
-    private void ThrowIfError(HttpResponseMessage response)
+    /// <param name="body">Resposta já lida: em erros inesperados, a mensagem da API ("message"/"errors") vai junto.</param>
+    private void ThrowIfError(HttpResponseMessage response, string? body = null)
     {
         switch (response.StatusCode)
         {
@@ -234,9 +236,31 @@ public sealed class OpenSubtitlesProvider(HttpClient http, Func<OpenSubtitlesSet
                 throw new SubtitleProviderException(Name, SubtitleProviderError.RateLimited,
                     "Muitas requisições ao OpenSubtitles em pouco tempo. Tente de novo em instantes.");
             case HttpStatusCode.NotAcceptable:
-                throw QuotaExceeded(null);
+                throw QuotaExceeded(body);
         }
-        if (!response.IsSuccessStatusCode) throw ProviderHttp.Unexpected(Name, response);
+        if (response.IsSuccessStatusCode) return;
+        if (ApiMessage(body) is not { } message) throw ProviderHttp.Unexpected(Name, response);
+        throw new SubtitleProviderException(Name, SubtitleProviderError.Unavailable,
+            $"{Name} respondeu HTTP {(int)response.StatusCode}: {message}");
+    }
+
+    /// <summary>"message" ou o primeiro de "errors" de uma resposta de erro, se for JSON.</summary>
+    internal static string? ApiMessage(string? body)
+    {
+        if (string.IsNullOrWhiteSpace(body)) return null;
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object) return null;
+            var message = root.Str("message") ??
+                          root.Items("errors").Select(e => e.ValueKind == JsonValueKind.String ? e.GetString() : null).FirstOrDefault(e => e is { Length: > 0 });
+            return message is { Length: > 0 } ? message.Trim() : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private SubtitleProviderException QuotaExceeded(string? json)

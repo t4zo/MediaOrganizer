@@ -55,6 +55,7 @@ Publicada em [v1.1.0](https://github.com/t4zo/MediaOrganizer/releases/tag/v1.1.0
 - Nova tela **Legendas**: busca na prévia (sem gastar cota) e download só do que for selecionado.
 - Salvar ao lado do vídeo já no padrão (`Série S01E01 - Título.pt-BR.srt`), oculto por padrão, ou embutir no MKV (MKVToolNix), registrando no Histórico para poder desfazer.
 - Configuração de idiomas preferidos, legendas forçadas/SDH e chaves de cada provedor.
+- **Verificar sincronia** por episódio: compara os tempos das opções com uma legenda que o vídeo já tem (arquivo ou faixa de texto do MKV) e mostra a precisão de cada uma (sincronizada, adiantada/atrasada, outra taxa de quadros, não confere). As opções baixadas para a verificação ficam em cache e não gastam cota de novo ao salvar.
 
 Critério de pronto: selecionar uma série e baixar as legendas `pt-BR` e `en` faltantes em um clique, com prévia antes de salvar.
 

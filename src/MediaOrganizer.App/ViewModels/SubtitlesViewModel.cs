@@ -32,10 +32,11 @@ public sealed partial class SubtitlesViewModel : ObservableObject
     private readonly PosterLoader _posters;
     private readonly UndoService _undo;
     private readonly SubtitleEmbedder _embedder;
+    private readonly SubtitleSyncChecker _syncChecker;
 
     public SubtitlesViewModel(ShellServices shell, SettingsStore settings, LibraryAnalyzer library, SubtitleAnalyzer analyzer,
         SubtitleDownloader downloader, SubtitleProviderSet providers, MediaMatcher matcher, PosterLoader posters, UndoService undo,
-        SubtitleEmbedder embedder)
+        SubtitleEmbedder embedder, SubtitleSyncChecker syncChecker)
     {
         _shell = shell;
         _settings = settings;
@@ -47,6 +48,7 @@ public sealed partial class SubtitlesViewModel : ObservableObject
         _posters = posters;
         _undo = undo;
         _embedder = embedder;
+        _syncChecker = syncChecker;
         OutputIndex = (int)settings.Current.SubtitleOutput;
 
         LibraryPath = settings.Current.LastLibraryPath ?? "";
@@ -424,6 +426,48 @@ public sealed partial class SubtitlesViewModel : ObservableObject
             folder.IsBusy = false;
             NotifyTotals();
             RefreshVisible();
+        }
+    }
+
+    internal SyncReferenceChoice SyncReference(VideoSubtitlePlan video) => _syncChecker.Reference(video);
+
+    internal int SyncOpenSubtitlesLimit => _syncChecker.OpenSubtitlesLimit;
+
+    /// <summary>"Usa até 4 download(s): OpenSubtitles 3 (12 restantes hoje), SubDL 1".</summary>
+    internal string SyncDownloadsText(VideoSubtitlePlan video, IReadOnlySet<string> verified)
+    {
+        var needed = _syncChecker.DownloadsNeeded(video, verified);
+        if (needed.Count == 0) return "As opções atuais não gastam downloads (já foram baixadas ou têm hash); opções novas de outros sites podem gastar.";
+        var parts = needed.Select(n => _providers.Find(n.Provider)?.RemainingDownloads is { } left
+            ? $"{n.Provider} {n.Count} ({left} restantes hoje)"
+            : $"{n.Provider} {n.Count}");
+        return $"Com as opções atuais, usa até {needed.Sum(n => n.Count)} download(s) da cota: {string.Join(", ", parts)}.";
+    }
+
+    /// <summary>Baixa as melhores opções do vídeo e compara os tempos com uma legenda que ele já tem.</summary>
+    internal async Task VerifySyncAsync(SubtitleVideoViewModel video, CancellationToken ct)
+    {
+        video.IsVerifying = true;
+        video.VerifyProgress = 0;
+        try
+        {
+            // A busca normal para no primeiro site com casamento confiável: aqui os outros também entram.
+            var more = await Task.Run(() => _analyzer.SearchMoreAsync(video.Plan, ct), ct);
+            if (more.Added > 0) video.Folder.ReplaceVideo(video, more.Video);
+
+            var progress = new Progress<double>(p => video.VerifyProgress = p);
+            var report = await Task.Run(() => _syncChecker.CheckAsync(video.Plan, progress, ct, video.Verified), ct);
+            video.ApplySync(report, more);
+            if (report.Message is { } message) _shell.ShowToast(message, isError: true);
+            else if (more.Error is { } error) _shell.ShowToast(error, isError: true);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            video.IsVerifying = false;
+            RefreshNotices();
         }
     }
 

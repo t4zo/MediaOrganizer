@@ -24,6 +24,8 @@ public sealed partial class SubtitleFolderViewModel : ObservableObject
 
     public FolderSubtitlePlan Plan { get; private set; }
 
+    internal SubtitlesViewModel Owner => _owner;
+
     public IReadOnlyList<SubtitleVideoViewModel> Videos { get; private set; }
 
     public IEnumerable<SubtitleVideoViewModel> VisibleVideos => Videos.Where(v => v.IsVisible);
@@ -75,6 +77,19 @@ public sealed partial class SubtitleFolderViewModel : ObservableObject
         OnPropertyChanged(string.Empty);
     }
 
+    /// <summary>Um vídeo ganhou opções de outros sites: atualiza o plano da pasta e só esse vídeo na tela.</summary>
+    internal void ReplaceVideo(SubtitleVideoViewModel video, VideoSubtitlePlan updated)
+    {
+        Plan = Plan with { Videos = [.. Plan.Videos.Select(v => ReferenceEquals(v, video.Plan) ? updated : v)] };
+        video.Replace(updated);
+        video.ApplyLanguageFilter(_languageFilter);
+        OnPropertyChanged(nameof(Items));
+        OnPropertyChanged(nameof(FoundText));
+        OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(MissingText));
+        SelectionChanged();
+    }
+
     internal void ApplyLanguageFilter(string? code)
     {
         _languageFilter = code;
@@ -120,15 +135,45 @@ public sealed partial class SubtitleFolderViewModel : ObservableObject
 /// <summary>Um vídeo: as legendas que já tem e as que faltam.</summary>
 public sealed partial class SubtitleVideoViewModel : ObservableObject
 {
+    private readonly SubtitleFolderViewModel _folder;
+    private SyncReferenceChoice? _reference;
+    private readonly HashSet<string> _verified = new(StringComparer.Ordinal);
+
+    /// <summary>Resultados de todas as verificações do vídeo (os itens são recriados quando chegam opções de outros sites).</summary>
+    private readonly Dictionary<string, CandidateSync> _results = new(StringComparer.Ordinal);
+
     public SubtitleVideoViewModel(VideoSubtitlePlan plan, SubtitleFolderViewModel folder)
     {
+        _folder = folder;
         Plan = plan;
-        Items = [.. plan.Items.Select(i => new SubtitleItemViewModel(i, plan.Query, folder))];
+        Items = BuildItems(plan);
     }
 
-    public VideoSubtitlePlan Plan { get; }
+    private IReadOnlyList<SubtitleItemViewModel> BuildItems(VideoSubtitlePlan plan) =>
+        [.. plan.Items.Select(i => new SubtitleItemViewModel(i, plan.Query, _folder))];
 
-    public IReadOnlyList<SubtitleItemViewModel> Items { get; }
+    internal SubtitleFolderViewModel Folder => _folder;
+
+    public VideoSubtitlePlan Plan { get; private set; }
+
+    public IReadOnlyList<SubtitleItemViewModel> Items { get; private set; }
+
+    /// <summary>Opções novas de outros sites: refaz os itens, mantendo marcadas/desmarcadas como o usuário deixou.</summary>
+    internal void Replace(VideoSubtitlePlan plan)
+    {
+        // Só vale a escolha de itens que já podiam ser marcados; os que eram "nenhuma encontrada" seguem o padrão.
+        var selected = Items.Where(i => i.CanSelect).ToDictionary(i => i.Item.Wanted, i => i.IsSelected);
+        Plan = plan;
+        Items = BuildItems(plan);
+        foreach (var item in Items)
+        {
+            if (selected.TryGetValue(item.Item.Wanted, out var wasSelected)) item.IsSelected = wasSelected && item.CanSelect;
+        }
+        OnPropertyChanged(nameof(Items));
+        OnPropertyChanged(nameof(HasCandidates));
+        NotifyVerify();
+        OnPropertyChanged(nameof(VerifyTip));
+    }
 
     public IEnumerable<SubtitleItemViewModel> VisibleItems => Items.Where(i => i.IsVisible);
 
@@ -154,11 +199,94 @@ public sealed partial class SubtitleVideoViewModel : ObservableObject
         IsVisible = code is null ? true : Items.Any(i => i.IsVisible);
         OnPropertyChanged(nameof(VisibleItems));
     }
+
+    // Verificação de sincronia
+
+    /// <summary>Há opções para comparar (o botão só aparece nesses vídeos).</summary>
+    public bool HasCandidates => Plan.Query is not null && Items.Any(i => i.HasOptions);
+
+    /// <summary>Legenda já presente usada como referência (calculada só quando a tela precisa).</summary>
+    private SyncReferenceChoice Reference => _reference ??= _folder.Owner.SyncReference(Plan);
+
+    public bool CanVerify => HasCandidates && Reference.IsAvailable && UnverifiedCount > 0;
+
+    /// <summary>Opções que ainda faltam verificar (todas as legendas do vídeo).</summary>
+    public int UnverifiedCount => SubtitleSyncChecker.Unverified(Plan, _verified);
+
+    public string VerifyText => _verified.Count == 0 ? "Verificar sincronia" : UnverifiedCount > 0 ? $"Verificar mais ({UnverifiedCount})" : "Tudo verificado";
+
+    internal IReadOnlySet<string> Verified => _verified;
+
+    private void NotifyVerify()
+    {
+        OnPropertyChanged(nameof(CanVerify));
+        OnPropertyChanged(nameof(UnverifiedCount));
+        OnPropertyChanged(nameof(VerifyText));
+    }
+
+    public string VerifyTip => Reference.Source is { } source
+        ? "Verificar sincronia: procura opções também nos sites que ficaram de fora da busca, baixa as de cada legenda " +
+          $"(do OpenSubtitles, até {_folder.Owner.SyncOpenSubtitlesLimit} por clique; SubDL e SubSource, todas) e compara os tempos com a legenda " +
+          $"{SubtitleReferenceProvider.Describe(source)}. {_folder.Owner.SyncDownloadsText(Plan, _verified)}"
+        : $"Não é possível verificar a sincronia: {Reference.Reason}";
+
+    [ObservableProperty]
+    public partial bool IsVerifying { get; set; }
+
+    [ObservableProperty]
+    public partial double VerifyProgress { get; set; }
+
+    /// <summary>"Sincronia comparada com a legenda en (embutida)", depois de verificar.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSyncSummary))]
+    public partial string? SyncSummary { get; private set; }
+
+    public bool HasSyncSummary => SyncSummary is not null;
+
+    [RelayCommand(IncludeCancelCommand = true)]
+    private Task VerifySyncAsync(CancellationToken ct) => _folder.Owner.VerifySyncAsync(this, ct);
+
+    internal void ApplySync(VideoSyncReport report, MoreSubtitlesResult more)
+    {
+        foreach (var result in report.Candidates) _results[SubtitleSyncChecker.Key(result.Candidate)] = result;
+        foreach (var item in Items) item.ApplySync([.. _results.Values], _verified);
+        if (report.Candidates.Count > 0)
+        {
+            foreach (var option in Items.SelectMany(i => i.Options))
+                option.NotVerified = !_verified.Contains(SubtitleSyncChecker.Key(option.Candidate)) && option.Sync is null && option.SyncError is null;
+        }
+
+        var searched = more.Searched.Count == 0 ? ""
+            : more.Added > 0 ? $" Também buscado em {string.Join(" e ", more.Searched)}: {more.Added} opção(ões) nova(s)."
+            : $" Também buscado em {string.Join(" e ", more.Searched)}: nada novo.";
+        if (report.Reference is { } reference && report.Candidates.Count > 0)
+            SyncSummary = $"Sincronia comparada com a legenda {reference.Description}.{searched}";
+        else if (searched.Length > 0)
+            SyncSummary = searched.Trim();
+        OnPropertyChanged(nameof(VerifyTip));
+        NotifyVerify();
+    }
 }
 
-/// <summary>Uma opção do menu de candidatos: "OpenSubtitles · Show.S01E01.WEB-DL-NTb · hash".</summary>
-public sealed record CandidateOption(SubtitleCandidate Candidate)
+/// <summary>Uma opção do menu de candidatos: "OpenSubtitles · Show.S01E01.WEB-DL-NTb · hash · 96% sincronizada".</summary>
+public sealed partial class CandidateOption(SubtitleCandidate candidate) : ObservableObject
 {
+    public SubtitleCandidate Candidate { get; } = candidate;
+
+    /// <summary>Resultado da verificação de sincronia (<c>null</c> se não verificada ou se falhou).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Display))]
+    public partial SyncResult? Sync { get; set; }
+
+    /// <summary>Por que a verificação desta opção falhou (cota, formato de imagem...).</summary>
+    [ObservableProperty]
+    public partial string? SyncError { get; set; }
+
+    /// <summary>A verificação rodou no vídeo, mas esta opção ficou de fora (limite por clique).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Display))]
+    public partial bool NotVerified { get; set; }
+
     public string Display
     {
         get
@@ -169,6 +297,8 @@ public sealed record CandidateOption(SubtitleCandidate Candidate)
             if (Candidate.Language.HearingImpaired) tags.Add("SDH");
             if (Candidate.IsSeasonPack) tags.Add("pacote da temporada");
             if (Candidate.MachineTranslated) tags.Add("tradução automática");
+            if (Sync is { Verdict: not SyncVerdict.Hash } sync) tags.Add(sync.Label);
+            else if (NotVerified) tags.Add("não verificada");
             return string.Join(" · ", tags);
         }
     }
@@ -181,6 +311,8 @@ public sealed partial class SubtitleItemViewModel : ObservableObject
 {
     private readonly SubtitleFolderViewModel _folder;
     private readonly bool _ready;
+    private bool _reordering;
+    private bool _userChose;
 
     public SubtitleItemViewModel(SubtitleItem item, SubtitleQuery? query, SubtitleFolderViewModel folder)
     {
@@ -195,7 +327,7 @@ public sealed partial class SubtitleItemViewModel : ObservableObject
 
     public SubtitleItem Item { get; }
     public SubtitleQuery? Query { get; }
-    public IReadOnlyList<CandidateOption> Options { get; }
+    public IReadOnlyList<CandidateOption> Options { get; private set; }
 
     public string LanguageText => Item.Wanted.ToString();
     public string LanguageName => Item.Wanted.DisplayName;
@@ -233,8 +365,70 @@ public sealed partial class SubtitleItemViewModel : ObservableObject
     [ObservableProperty]
     public partial bool IsVisible { get; set; } = true;
 
+    // Sincronia da opção escolhida: selo "96%" (verde), "41%" (amarelo, deslocada) ou "não confere" (vermelho).
+
+    private SyncResult? Sync => SelectedOption?.Sync is { Verdict: not SyncVerdict.Hash } sync ? sync : null;
+
+    public bool HasSync => Sync is not null;
+    public string? SyncText => Sync is { } sync ? sync.Verdict == SyncVerdict.Mismatch ? "não confere" : $"{sync.Percent}%" : null;
+    public bool SyncGood => Sync?.Verdict == SyncVerdict.Synced;
+    public bool SyncWarn => Sync?.Verdict is SyncVerdict.Shifted or SyncVerdict.FrameRate;
+    public bool SyncBad => Sync?.Verdict == SyncVerdict.Mismatch;
+    public string? SyncTip => Sync?.Description;
+
+    public string? SyncError => SelectedOption?.SyncError is { } error ? $"Sincronia não verificada: {error}" : null;
+    public bool HasSyncError => SyncError is not null;
+
+    /// <summary>
+    /// Marca cada opção com o resultado e reordena: verificadas primeiro (melhor sincronia no topo), depois as
+    /// demais na ordem original. Se o usuário não trocou a opção à mão, a melhor passa a ser a escolhida.
+    /// </summary>
+    /// <param name="verified">Opções já verificadas no vídeo; esta chamada acrescenta as que acabou de verificar.</param>
+    internal void ApplySync(IReadOnlyList<CandidateSync> results, HashSet<string> verified)
+    {
+        foreach (var option in Options)
+        {
+            var key = SubtitleSyncChecker.Key(option.Candidate);
+            if (results.FirstOrDefault(r => SubtitleSyncChecker.Key(r.Candidate) == key) is not { } result) continue;
+            option.Sync = result.Result;
+            option.SyncError = result.Result is null ? result.Error : null;
+            if (!result.CanRetry) verified.Add(SubtitleSyncChecker.Key(option.Candidate));
+        }
+
+        var selected = SelectedOption;
+        var wasSelected = IsSelected;
+        _reordering = true;
+        try
+        {
+            Options = [.. Options.Where(o => o.Sync is not null).OrderByDescending(o => o.Sync!.SortKey), .. Options.Where(o => o.Sync is null)];
+            OnPropertyChanged(nameof(Options));
+            SelectedOption = _userChose || Options.Count == 0 ? selected : Options[0];
+            // Trocar a lista do ComboBox pode zerar a seleção por um instante, o que desmarcaria o item.
+            IsSelected = wasSelected && CanSelect;
+        }
+        finally
+        {
+            _reordering = false;
+        }
+        NotifySync();
+    }
+
+    private void NotifySync()
+    {
+        OnPropertyChanged(nameof(HasSync));
+        OnPropertyChanged(nameof(SyncText));
+        OnPropertyChanged(nameof(SyncGood));
+        OnPropertyChanged(nameof(SyncWarn));
+        OnPropertyChanged(nameof(SyncBad));
+        OnPropertyChanged(nameof(SyncTip));
+        OnPropertyChanged(nameof(SyncError));
+        OnPropertyChanged(nameof(HasSyncError));
+    }
+
     partial void OnSelectedOptionChanged(CandidateOption? value)
     {
+        if (_ready && !_reordering && value is not null) _userChose = true;
+        NotifySync();
         OnPropertyChanged(nameof(HashMatch));
         OnPropertyChanged(nameof(CanSelect));
         OnPropertyChanged(nameof(Message));

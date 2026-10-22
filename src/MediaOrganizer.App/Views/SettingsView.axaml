@@ -142,6 +142,13 @@
                        IsVisible="{Binding OpenSubtitlesStatus, Converter={x:Static ObjectConverters.IsNotNull}}" />
             <TextBlock Classes="caption" TextWrapping="Wrap"
                        Text="A senha fica salva em texto puro em settings.json (na pasta de dados), como a chave do TMDb." />
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" Margin="0,4,0,0">
+              <TextBlock Text="Opções verificadas por clique em “Verificar sincronia”" VerticalAlignment="Center" TextWrapping="Wrap" />
+              <NumericUpDown Grid.Column="1" Value="{Binding OpenSubtitlesSyncLimit}" Minimum="1" Maximum="{Binding MaxSyncLimit}"
+                             Increment="1" FormatString="0" MinWidth="120" />
+            </Grid>
+            <TextBlock Classes="caption" TextWrapping="Wrap"
+                       Text="Cada opção verificada é um download da cota diária do OpenSubtitles (a legenda fica em cache, então baixá-la depois não gasta de novo). O limite vale só para o OpenSubtitles: as opções do SubDL e do SubSource são todas verificadas de uma vez. Para conferir mais, use “Verificar mais”. Padrão: 5." />
           </StackPanel>
 
           <Separator />

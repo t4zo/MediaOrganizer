@@ -71,3 +71,9 @@ public sealed record FolderSubtitlePlan(
     public static FolderSubtitlePlan Failed(LibraryFolder folder, FolderSubtitleStatus status, string message, MediaCandidate? match = null) =>
         new(folder, match, [], status, message);
 }
+
+/// <summary>Resultado de <see cref="SubtitleAnalyzer.SearchMoreAsync"/>: o vídeo com as opções novas.</summary>
+/// <param name="Searched">Sites consultados agora.</param>
+/// <param name="Added">Opções novas, somando todos os idiomas.</param>
+/// <param name="Error">Falha de algum site (os demais resultados valem).</param>
+public sealed record MoreSubtitlesResult(VideoSubtitlePlan Video, IReadOnlyList<string> Searched, int Added, string? Error);

@@ -164,6 +164,65 @@ public sealed class SubtitleAnalyzer(TmdbClient tmdb, SettingsStore settings, Su
         return new SubtitleItem(state.VideoPath, language, ranked, SubtitleItemStatus.Found, message, NeedsConfirmation: doubt is not null || !best.IsStrong);
     }
 
+    /// <summary>
+    /// Para a verificação de sincronia: pede cada legenda que falta também aos sites que ainda não têm opção para
+    /// ela (a busca normal para no primeiro site com casamento confiável) e junta tudo, reordenado pela pontuação.
+    /// Buscar não gasta cota. Itens em conflito ficam como estão.
+    /// </summary>
+    public async Task<MoreSubtitlesResult> SearchMoreAsync(VideoSubtitlePlan video, CancellationToken ct)
+    {
+        if (video.Query is not { } query) return new MoreSubtitlesResult(video, [], 0, null);
+
+        var current = settings.Current;
+        var open = video.Items.Where(i => i.Status != SubtitleItemStatus.Conflict).ToList();
+        var found = new List<SubtitleCandidate>();
+        var searched = new List<string>();
+        string? error = null;
+
+        foreach (var provider in providers.Active)
+        {
+            var languages = open.Where(i => !i.Candidates.Any(c => c.Provider.Equals(provider.Name, StringComparison.OrdinalIgnoreCase)))
+                .Select(i => i.Wanted).ToList();
+            if (languages.Count == 0) continue;
+            try
+            {
+                found.AddRange(await provider.SearchAsync(query with { Languages = languages }, ct).ConfigureAwait(false));
+                searched.Add(provider.Name);
+            }
+            catch (SubtitleProviderException e)
+            {
+                providers.Report(e);
+                error = e.Message;
+            }
+            catch (Exception e) when (e is System.Text.Json.JsonException or HttpRequestException)
+            {
+                error = $"{provider.Name}: resposta inesperada ({e.Message}).";
+            }
+        }
+
+        if (!current.IncludeMachineTranslated) found = [.. found.Where(c => !c.MachineTranslated)];
+
+        var added = 0;
+        var items = video.Items.Select(item =>
+        {
+            if (item.Status == SubtitleItemStatus.Conflict) return item;
+            var fresh = found.Where(c => c.Language.SameKind(item.Wanted) &&
+                                         !item.Candidates.Any(e => e.Provider == c.Provider && e.ProviderId == c.ProviderId))
+                .DistinctBy(c => (c.Provider, c.ProviderId)).ToList();
+            if (fresh.Count == 0) return item;
+
+            added += fresh.Count;
+            var merged = Item(video.State, item.Wanted, [.. item.Candidates, .. fresh], current.SubtitleHearingImpaired, query.ReleaseName, null);
+            return merged with
+            {
+                Priority = item.Priority,
+                Message = merged.Message ?? (item.Status == SubtitleItemStatus.Found ? item.Message : null),
+            };
+        }).ToList();
+
+        return new MoreSubtitlesResult(video with { Items = items }, searched, added, error);
+    }
+
     /// <summary>Por grupo (normais/forçadas): o primeiro idioma da lista que tiver candidato; os demais ficam de fora.</summary>
     private static List<SubtitleItem> FirstAvailable(VideoSubtitleState state, List<SubtitleCandidate> all,
         HearingImpairedPreference preference, string releaseName, string? error)

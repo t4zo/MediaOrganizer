@@ -369,4 +369,95 @@ public sealed class SubtitleWorkflowTests : IDisposable
         Assert.Equal(SubtitleItemStatus.Found, Assert.Single(plan.Items).Status);
         Assert.Equal(("tt0137523", (int?)null), (_first.Searches[0].ImdbId, _first.Searches[0].Episode));
     }
+
+    [Fact]
+    public async Task SearchMoreAsksTheSitesSkippedByTheNormalSearch()
+    {
+        _library.File("Show/Show S01E01 - One.mkv");
+        _first.Has(1, "pt-BR");
+        _second.Has(1, "pt-BR", release: "Show.S01E01.1080p.WEB-DL-OTHER").Has(1, "pt-BR", release: "Show.S01E01.720p.HDTV-X");
+
+        var plan = await AnalyzeAsync();
+        var video = Assert.Single(plan.Videos);
+        Assert.Empty(_second.Searches);
+        Assert.All(video.Items[0].Candidates, c => Assert.Equal("Primeiro", c.Provider));
+
+        var more = await _analyzer.SearchMoreAsync(video, TestContext.Current.CancellationToken);
+
+        Assert.Equal(["Segundo"], more.Searched);
+        Assert.Equal(2, more.Added);
+        Assert.Null(more.Error);
+        var item = Assert.Single(more.Video.Items);
+        Assert.Equal(SubtitleItemStatus.Found, item.Status);
+        Assert.Equal(3, item.Candidates.Count);
+        Assert.Equal(["Primeiro", "Segundo"], item.Candidates.Select(c => c.Provider).Distinct().Order(StringComparer.Ordinal));
+        Assert.Single(_first.Searches);
+
+        var again = await _analyzer.SearchMoreAsync(more.Video, TestContext.Current.CancellationToken);
+        Assert.Equal(0, again.Added);
+        Assert.Empty(again.Searched);
+    }
+
+    [Fact]
+    public async Task SearchMoreTurnsNotFoundIntoFound()
+    {
+        _library.File("Show/Show S01E01 - One.mkv");
+        _second.IsConfigured = false;
+        var plan = await AnalyzeAsync();
+        Assert.Equal(SubtitleItemStatus.NotFound, Assert.Single(plan.Items).Status);
+
+        _second.IsConfigured = true;
+        _second.Has(1, "pt-BR");
+        var more = await _analyzer.SearchMoreAsync(Assert.Single(plan.Videos), TestContext.Current.CancellationToken);
+
+        Assert.Equal(SubtitleItemStatus.Found, Assert.Single(more.Video.Items).Status);
+        Assert.Equal(1, more.Added);
+    }
+}
+
+public sealed class SubtitleSyncSelectionTests
+{
+    private const string Os = "OpenSubtitles";
+
+    private static SubtitleCandidate C(string provider, int n, bool hash = false) =>
+        new(provider, $"{n}", new SubtitleLanguage("pt-BR"), null, hash, true, false, 0);
+
+    private static SubtitleItem Item(params SubtitleCandidate[] candidates) =>
+        new("v.mkv", new SubtitleLanguage("pt-BR"), candidates, SubtitleItemStatus.Found);
+
+    [Fact]
+    public void OnlyOpenSubtitlesIsLimitedPerClick()
+    {
+        var item = Item([.. Enumerable.Range(1, 7).Select(n => C(Os, n)), .. Enumerable.Range(1, 6).Select(n => C("SubSource", n)), C("SubDL", 1)]);
+
+        var keys = SubtitleSyncChecker.ToCheck(item, openSubtitlesLimit: 5).Select(SubtitleSyncChecker.Key).ToList();
+
+        Assert.Equal(5, keys.Count(k => k.StartsWith(Os, StringComparison.Ordinal)));
+        Assert.Equal(6, keys.Count(k => k.StartsWith("SubSource", StringComparison.Ordinal)));
+        Assert.Contains("SubDL:1", keys);
+    }
+
+    [Fact]
+    public void HashMatchesDoNotUseTheOpenSubtitlesLimit()
+    {
+        var item = Item(C(Os, 1, hash: true), C(Os, 2), C(Os, 3));
+
+        Assert.Equal(["OpenSubtitles:1", "OpenSubtitles:2"], SubtitleSyncChecker.ToCheck(item, openSubtitlesLimit: 1).Select(SubtitleSyncChecker.Key));
+    }
+
+    [Fact]
+    public void VerifyMoreTakesTheNextOpenSubtitlesOptions()
+    {
+        var item = Item([.. Enumerable.Range(1, 7).Select(n => C(Os, n)), C("SubSource", 1)]);
+        var video = new VideoSubtitlePlan(new VideoSubtitleState("v.mkv", null, [], [], false, false), [item], null);
+
+        var first = SubtitleSyncChecker.ToCheck(item, 5).ToList();
+        var verified = first.Select(SubtitleSyncChecker.Key).ToHashSet();
+        var second = SubtitleSyncChecker.ToCheck(item, 5, verified).ToList();
+
+        Assert.Equal(["OpenSubtitles:1", "OpenSubtitles:2", "OpenSubtitles:3", "OpenSubtitles:4", "OpenSubtitles:5", "SubSource:1"],
+            first.Select(SubtitleSyncChecker.Key));
+        Assert.Equal(["OpenSubtitles:6", "OpenSubtitles:7"], second.Select(SubtitleSyncChecker.Key));
+        Assert.Equal(2, SubtitleSyncChecker.Unverified(video, verified));
+    }
 }
