@@ -165,6 +165,17 @@ public sealed class SubtitleSyncCompareTests
     }
 
     [Fact]
+    public void HalfSecondOrLessCountsAsSyncedAndShowsTheDifference()
+    {
+        var result = SubtitleSync.Compare(SyntheticSubtitles.Shift(Reference, 0.4), Reference)!;
+
+        Assert.Equal(SyncVerdict.Synced, result.Verdict);
+        Assert.InRange(result.Percent, 70, 90);
+        Assert.Equal(-0.4, result.Offset.TotalSeconds, 2);
+        Assert.Contains("atrasada", result.Label, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void SmallOffsetStillCountsAsSynced()
     {
         var result = SubtitleSync.Compare(SyntheticSubtitles.Shift(Reference, 0.1), Reference)!;

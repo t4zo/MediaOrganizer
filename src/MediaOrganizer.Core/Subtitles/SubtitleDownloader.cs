@@ -33,7 +33,7 @@ public sealed class SubtitleDownloader(SubtitleProviderSet providers, HistorySto
     /// os demais formatos ficam com o arquivo ao lado.
     /// </param>
     public async Task<ExecutionResult> ApplyAsync(string libraryPath, MediaKind kind, string description, IReadOnlyList<SubtitleDownload> downloads,
-        SubtitleOutput output = SubtitleOutput.File, IProgress<double>? progress = null, CancellationToken ct = default)
+        SubtitleOutput output = SubtitleOutput.File, IProgress<BatchProgress>? progress = null, CancellationToken ct = default)
     {
         var folders = downloads.Select(d => d.Folder).DistinctBy(f => f.Folder.Key).ToList();
         var unchangedBefore = folders.Where(WasUnchanged).Select(f => f.Folder.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -69,16 +69,18 @@ public sealed class SubtitleDownloader(SubtitleProviderSet providers, HistorySto
         var errors = new List<string>();
         var succeeded = 0;
 
+        var batch = new BatchReporter(progress, units.Count);
         for (var index = 0; index < units.Count; index++)
         {
             var unit = units[index];
+            batch.Start(index, unit.EmbedVideo ?? unit.Downloads[0].TargetPath, measurable: unit.EmbedVideo is not null);
             var op = unit.Operation;
             try
             {
                 ct.ThrowIfCancellationRequested();
                 if (unit.EmbedVideo is { } video)
                 {
-                    await EmbedDownloadsAsync(video, unit.Downloads, op, current.KeepOriginalAfterEmbed, ct).ConfigureAwait(false);
+                    await EmbedDownloadsAsync(video, unit.Downloads, op, current.KeepOriginalAfterEmbed, batch.Current(index, video), ct).ConfigureAwait(false);
                     succeeded += unit.Downloads.Count;
                 }
                 else
@@ -105,7 +107,7 @@ public sealed class SubtitleDownloader(SubtitleProviderSet providers, HistorySto
             }
 
             history.Save(journal);
-            progress?.Report((index + 1) / (double)units.Count);
+            batch.Done(index);
         }
 
         history.Save(journal);
@@ -118,7 +120,7 @@ public sealed class SubtitleDownloader(SubtitleProviderSet providers, HistorySto
     /// (operação Move no mesmo lote), então desfazer devolve tudo como estava.
     /// </summary>
     public async Task<ExecutionResult> EmbedExistingAsync(string libraryPath, MediaKind kind, string description, IReadOnlyList<ExistingEmbed> videos,
-        IProgress<double>? progress = null, CancellationToken ct = default)
+        IProgress<BatchProgress>? progress = null, CancellationToken ct = default)
     {
         var tool = embedder ?? throw new InvalidOperationException("Embutir legendas requer o mkvmerge.");
         var folders = videos.Select(v => v.Folder).DistinctBy(f => f.Folder.Key).ToList();
@@ -149,9 +151,11 @@ public sealed class SubtitleDownloader(SubtitleProviderSet providers, HistorySto
 
         var errors = new List<string>();
         var succeeded = 0;
+        var batch = new BatchReporter(progress, units.Count);
         for (var index = 0; index < units.Count; index++)
         {
             var (embed, moves, subs) = units[index];
+            batch.Start(index, embed.To, measurable: true);
             var temps = new List<string>();
             try
             {
@@ -165,7 +169,7 @@ public sealed class SubtitleDownloader(SubtitleProviderSet providers, HistorySto
                     tracks.Add(new EmbedTrack(temp, subtitle.Language));
                 }
 
-                var result = await tool.EmbedAsync(embed.To, tracks, settings.Current.KeepOriginalAfterEmbed, null, ct).ConfigureAwait(false);
+                var result = await tool.EmbedAsync(embed.To, tracks, settings.Current.KeepOriginalAfterEmbed, batch.Current(index, embed.To), ct).ConfigureAwait(false);
                 embed.From = result.BackupPath ?? "";
                 embed.AddedTrackIds = result.AddedTrackIds;
                 embed.State = OperationState.Done;
@@ -207,7 +211,7 @@ public sealed class SubtitleDownloader(SubtitleProviderSet providers, HistorySto
             }
 
             history.Save(journal);
-            progress?.Report((index + 1) / (double)units.Count);
+            batch.Done(index);
         }
 
         history.Save(journal);
@@ -216,7 +220,8 @@ public sealed class SubtitleDownloader(SubtitleProviderSet providers, HistorySto
     }
 
     /// <summary>Baixa todas as legendas do vídeo para a pasta de trabalho e embute numa só passada.</summary>
-    private async Task EmbedDownloadsAsync(string video, IReadOnlyList<SubtitleDownload> downloads, JournalOperation op, bool keepOriginal, CancellationToken ct)
+    private async Task EmbedDownloadsAsync(string video, IReadOnlyList<SubtitleDownload> downloads, JournalOperation op, bool keepOriginal,
+        IProgress<double>? progress, CancellationToken ct)
     {
         var temps = new List<string>();
         try
@@ -231,7 +236,7 @@ public sealed class SubtitleDownloader(SubtitleProviderSet providers, HistorySto
                 tracks.Add(new EmbedTrack(temp, download.Candidate.Language));
             }
 
-            var result = await embedder!.EmbedAsync(video, tracks, keepOriginal, null, ct).ConfigureAwait(false);
+            var result = await embedder!.EmbedAsync(video, tracks, keepOriginal, progress, ct).ConfigureAwait(false);
             op.From = result.BackupPath ?? "";
             op.AddedTrackIds = result.AddedTrackIds;
         }
@@ -325,4 +330,38 @@ public sealed class SubtitleDownloader(SubtitleProviderSet providers, HistorySto
 
     private LibraryFolder Rescan(LibraryFolder folder) =>
         library.CreateScanner().ScanFolder(folder.Kind, folder.RootPath, folder.Path);
+}
+
+/// <summary>
+/// Progresso de um lote: o geral (0 a 1) e o do arquivo atual (0 a 1, ou <c>null</c> quando não dá para medir,
+/// como num download de legenda). <paramref name="Index"/> começa em 0.
+/// </summary>
+public readonly record struct BatchProgress(int Index, int Count, string CurrentPath, double Overall, double? Current);
+
+/// <summary>Traduz o andamento de cada item (o progresso do mkvmerge) para o progresso do lote.</summary>
+internal sealed class BatchReporter(IProgress<BatchProgress>? progress, int count)
+{
+    private string _path = "";
+
+    /// <param name="measurable">O item tem progresso próprio (embutir): a barra dele começa em 0%.</param>
+    public void Start(int index, string path, bool measurable)
+    {
+        _path = path;
+        progress?.Report(new BatchProgress(index, count, path, index / (double)count, measurable ? 0 : null));
+    }
+
+    /// <summary>Progresso do item atual; repassado direto (sem <see cref="Progress{T}"/>, que trocaria a ordem das notificações).</summary>
+    public IProgress<double>? Current(int index, string path) =>
+        progress is null ? null : new Relay(p =>
+        {
+            var current = Math.Clamp(p, 0, 1);
+            progress.Report(new BatchProgress(index, count, path, (index + current) / count, current));
+        });
+
+    public void Done(int index) => progress?.Report(new BatchProgress(index, count, _path, (index + 1) / (double)count, null));
+
+    private sealed class Relay(Action<double> report) : IProgress<double>
+    {
+        public void Report(double value) => report(value);
+    }
 }

@@ -75,6 +75,10 @@
     <StackPanel Grid.Row="2" Spacing="6" IsVisible="{Binding IsBusy}" Margin="0,0,0,14">
       <ProgressBar Value="{Binding Progress}" Maximum="100" Height="4" MinHeight="4" />
       <TextBlock Classes="caption" Text="{Binding ProgressText}" />
+      <StackPanel Spacing="4" IsVisible="{Binding HasCurrentProgress}" Margin="0,2,0,0">
+        <ProgressBar Value="{Binding CurrentProgress}" Maximum="100" Height="4" MinHeight="4" />
+        <TextBlock Classes="caption" Text="{Binding CurrentProgressText}" TextTrimming="CharacterEllipsis" />
+      </StackPanel>
     </StackPanel>
 
     <!-- Estado vazio -->

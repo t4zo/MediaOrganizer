@@ -313,3 +313,28 @@ public sealed class SubtitleEmbedTests : IDisposable
         Assert.Equal([1], result.AddedTrackIds);
     }
 }
+
+public sealed class BatchProgressTests
+{
+    [Fact]
+    public void ReportsOverallAndCurrentItemProgress()
+    {
+        var reports = new List<BatchProgress>();
+        var batch = new BatchReporter(new SyncProgress(reports.Add), count: 2);
+
+        batch.Start(0, "a.mkv", measurable: true);
+        batch.Current(0, "a.mkv")!.Report(0.5);
+        batch.Done(0);
+        batch.Start(1, "b.srt", measurable: false);
+        batch.Done(1);
+
+        Assert.Equal([0, 0.25, 0.5, 0.5, 1], reports.Select(r => r.Overall));
+        Assert.Equal([0, 0.5, null, null, null], reports.Select(r => r.Current));
+        Assert.Equal("b.srt", reports[^1].CurrentPath);
+    }
+
+    private sealed class SyncProgress(Action<BatchProgress> report) : IProgress<BatchProgress>
+    {
+        public void Report(BatchProgress value) => report(value);
+    }
+}

@@ -17,8 +17,9 @@ public enum SyncVerdict
 }
 
 /// <param name="Precision">
-/// Falas da candidata que começam junto com uma fala da referência (±250 ms) sem nenhum ajuste, em relação ao
-/// melhor alinhamento possível (0 a 1). Com <see cref="SyncVerdict.Mismatch"/>, é a fração bruta.
+/// Nota das falas da candidata sem nenhum ajuste (1 se começam a até 250 ms de uma fala da referência, caindo até
+/// 0 com 1 s de diferença), em relação ao melhor alinhamento possível (0 a 1). Com <see cref="SyncVerdict.Mismatch"/>,
+/// é a fração bruta.
 /// </param>
 /// <param name="Offset">Quanto somar aos tempos da candidata para alinhar (positivo: a legenda aparece cedo demais).</param>
 /// <param name="Scale">Fator de tempo do melhor alinhamento (1 = mesma taxa de quadros).</param>
@@ -44,7 +45,7 @@ public sealed record SyncResult(double Precision, TimeSpan Offset, double Scale,
     public string Label => Verdict switch
     {
         SyncVerdict.Hash => "hash",
-        SyncVerdict.Synced => $"{Percent}% sincronizada",
+        SyncVerdict.Synced => HasSmallOffset ? $"{Percent}% sincronizada · {OffsetText}" : $"{Percent}% sincronizada",
         SyncVerdict.Shifted => $"{Percent}% · {OffsetText}",
         SyncVerdict.FrameRate => $"{Percent}% · outra taxa de quadros",
         _ => "não confere",
@@ -53,11 +54,15 @@ public sealed record SyncResult(double Precision, TimeSpan Offset, double Scale,
     public string Description => Verdict switch
     {
         SyncVerdict.Hash => "O site confirmou que a legenda é deste arquivo (hash): sincronia praticamente garantida.",
-        SyncVerdict.Synced => $"{Percent}% das falas começam junto com as da legenda de referência (do máximo possível entre as duas).",
+        SyncVerdict.Synced => $"Nota {Percent}% (do máximo possível entre as duas): as falas começam junto com as da legenda de referência" +
+                              (HasSmallOffset ? $", com {Seconds} de diferença; pode ser da própria referência, e costuma passar despercebido." : "."),
         SyncVerdict.Shifted => $"As falas aparecem {Seconds} {(Offset > TimeSpan.Zero ? "antes" : "depois")} da hora (comparando com a referência).",
         SyncVerdict.FrameRate => "Feita para outra taxa de quadros (ex.: 25 × 23,976 fps): o atraso cresce ao longo do episódio.",
         _ => "As falas não coincidem com a referência em nenhum alinhamento: provavelmente outro corte ou outro episódio.",
     };
+
+    /// <summary>Sincronizada, mas com diferença medida (de 0,2 s a ~0,6 s): o texto mostra quanto.</summary>
+    private bool HasSmallOffset => Scale == 1 && Math.Abs(Offset.TotalMilliseconds) >= 200;
 
     /// <summary>"atrasada 2,3 s" (aparece depois da fala) ou "adiantada 2,3 s".</summary>
     private string OffsetText => (Offset > TimeSpan.Zero ? "adiantada " : "atrasada ") + Seconds;
@@ -71,8 +76,9 @@ public sealed record SyncResult(double Precision, TimeSpan Offset, double Scale,
 /// <list type="number">
 /// <item>Alinhamento: divide o tempo em blocos de 100 ms e procura o deslocamento (até ±60 s) e a taxa de quadros
 /// em que mais fala da candidata cai sobre fala da referência.</item>
-/// <item>Precisão: quantas falas da candidata começam a até 250 ms do início de uma fala da referência, sem ajuste,
-/// comparado com o mesmo número no melhor alinhamento. Medir só a sobreposição seria frouxo demais: com diálogo
+/// <item>Precisão: nota das falas da candidata pela distância até o início de uma fala da referência, sem ajuste
+/// (inteira até 250 ms, zero a partir de 1 s), comparada com a do melhor alinhamento. Medir só a sobreposição seria
+/// frouxo demais: com diálogo
 /// denso, uma legenda 2 s atrasada ainda se sobrepõe em quase 90%.</item>
 /// </list>
 /// </summary>
@@ -91,7 +97,10 @@ public static class SubtitleSync
     private const int RefineStepMilliseconds = 25;
 
     /// <summary>A partir daqui (em relação ao melhor alinhamento) a legenda conta como sincronizada.</summary>
-    internal const double SyncedThreshold = 0.85;
+    internal const double SyncedThreshold = 0.60;
+
+    /// <summary>Diferença a partir da qual uma fala já não ganha nota nenhuma.</summary>
+    private const double MaxGradedMilliseconds = 1000;
 
     /// <summary>Abaixo disso, nem no melhor alinhamento as falas começam juntas: não é a mesma legenda.</summary>
     internal const double MinConfidence = 0.40;
@@ -131,11 +140,13 @@ public static class SubtitleSync
         var offsetTime = TimeSpan.FromMilliseconds(Math.Round(bestOffset / 10) * 10);
         if (best < MinConfidence) return new SyncResult(zero, offsetTime, bestScale, SyncVerdict.Mismatch, best);
 
-        var precision = Math.Min(1, zero / best);
+        // Precisão com nota gradual: até 250 ms vale inteiro, e cai até zero em 1 s. Assim 0,4 s de diferença
+        // (que quase ninguém percebe, e muitas vezes é da própria referência) não derruba a nota para 35%.
+        var precision = Math.Min(1, GradedAgreement(candidate, referenceStarts, 1, 0) / GradedAgreement(candidate, referenceStarts, bestScale, bestOffset));
         var verdict = precision >= SyncedThreshold ? SyncVerdict.Synced
             : bestScale != 1 ? SyncVerdict.FrameRate
             : SyncVerdict.Shifted;
-        return new SyncResult(precision, verdict == SyncVerdict.Synced ? TimeSpan.Zero : offsetTime, bestScale, verdict, best);
+        return new SyncResult(precision, offsetTime, bestScale, verdict, best);
     }
 
     /// <summary>Taxa de quadros e deslocamento (em blocos) em que mais fala da candidata cai sobre fala da referência.</summary>
@@ -201,6 +212,28 @@ public static class SubtitleSync
             differences?.Add(difference);
         }
         return hits / (double)candidate.Count;
+    }
+
+    /// <summary>
+    /// Nota média das falas da candidata (já ajustadas): 1 se começam a até 250 ms de uma fala da referência,
+    /// caindo em linha reta até 0 com 1 s de diferença.
+    /// </summary>
+    private static double GradedAgreement(IReadOnlyList<SubtitleCue> candidate, double[] referenceStarts, double scale, double offsetMilliseconds)
+    {
+        var total = 0.0;
+        foreach (var cue in candidate)
+        {
+            var start = cue.Start.TotalMilliseconds * scale + offsetMilliseconds;
+            var index = Array.BinarySearch(referenceStarts, start);
+            if (index < 0) index = ~index;
+            var nearest = Math.Min(
+                index < referenceStarts.Length ? Math.Abs(referenceStarts[index] - start) : double.MaxValue,
+                index > 0 ? Math.Abs(start - referenceStarts[index - 1]) : double.MaxValue);
+            total += nearest <= StartToleranceMilliseconds ? 1
+                : nearest >= MaxGradedMilliseconds ? 0
+                : (MaxGradedMilliseconds - nearest) / (MaxGradedMilliseconds - StartToleranceMilliseconds);
+        }
+        return total / candidate.Count;
     }
 
     private static int Bin(TimeSpan time) => (int)(time.TotalMilliseconds / BinMilliseconds);

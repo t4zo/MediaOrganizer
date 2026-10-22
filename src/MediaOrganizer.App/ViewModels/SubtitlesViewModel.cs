@@ -109,6 +109,27 @@ public sealed partial class SubtitlesViewModel : ObservableObject
     [ObservableProperty]
     public partial string ProgressText { get; private set; } = "";
 
+    /// <summary>Progresso do vídeo sendo embutido (0 a 100); só aparece quando dá para medir (mkvmerge).</summary>
+    [ObservableProperty]
+    public partial double CurrentProgress { get; private set; }
+
+    [ObservableProperty]
+    public partial string? CurrentProgressText { get; private set; }
+
+    public bool HasCurrentProgress => CurrentProgressText is not null;
+
+    partial void OnCurrentProgressTextChanged(string? value) => OnPropertyChanged(nameof(HasCurrentProgress));
+
+    /// <summary>Barra geral ("Embutindo 2 de 5 — 40%") e a do vídeo atual ("Show S01E02.mkv — 63%").</summary>
+    private Progress<BatchProgress> BatchProgressFor(string verb) => new(p =>
+    {
+        Progress = p.Overall * 100;
+        var position = Math.Min(p.Count, p.Index + 1);
+        ProgressText = $"{verb} {position} de {p.Count} — {p.Overall:P0} no total";
+        CurrentProgress = (p.Current ?? 0) * 100;
+        CurrentProgressText = p.Current is { } current ? $"{Path.GetFileName(p.CurrentPath)} — {current:P0}" : null;
+    });
+
     [ObservableProperty]
     public partial bool HasResults { get; private set; }
 
@@ -290,11 +311,7 @@ public sealed partial class SubtitlesViewModel : ObservableObject
             var description = targets.Count == 1
                 ? $"Legendas: {targets[0].Name} ({downloads.Count})"
                 : $"Legendas: {downloads.Count} em {downloads.Select(d => d.Folder.Folder.Key).Distinct().Count()} pasta(s)";
-            var progress = new Progress<double>(p =>
-            {
-                Progress = p * 100;
-                ProgressText = $"Baixando {Math.Min(downloads.Count, (int)Math.Round(p * downloads.Count) + 1)} de {downloads.Count}...";
-            });
+            var progress = BatchProgressFor((SubtitleOutput)OutputIndex == SubtitleOutput.Embed ? "Baixando e embutindo" : "Baixando");
 
             var output = (SubtitleOutput)OutputIndex;
             if (output == SubtitleOutput.Embed && !_embedder.IsAvailable)
@@ -328,6 +345,7 @@ public sealed partial class SubtitlesViewModel : ObservableObject
         finally
         {
             IsDownloading = false;
+            CurrentProgressText = null;
             RefreshNotices();
             NotifyTotals();
         }
@@ -358,11 +376,7 @@ public sealed partial class SubtitlesViewModel : ObservableObject
         ProgressText = $"Embutindo legendas em {videos.Count} vídeo(s)...";
         try
         {
-            var progress = new Progress<double>(p =>
-            {
-                Progress = p * 100;
-                ProgressText = $"Embutindo {Math.Min(videos.Count, (int)Math.Round(p * videos.Count) + 1)} de {videos.Count}...";
-            });
+            var progress = BatchProgressFor("Embutindo");
             var result = await _downloader.EmbedExistingAsync(LibraryPath, IsMovies ? MediaKind.Movie : MediaKind.Series,
                 $"Legendas embutidas: {folder.Name} ({videos.Count})", videos, progress);
 
@@ -377,6 +391,7 @@ public sealed partial class SubtitlesViewModel : ObservableObject
         finally
         {
             IsDownloading = false;
+            CurrentProgressText = null;
         }
     }
 
