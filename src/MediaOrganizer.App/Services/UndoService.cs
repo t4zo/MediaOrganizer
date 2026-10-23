@@ -13,8 +13,17 @@ public sealed class UndoService(ShellServices shell, RenameExecutor executor, Li
     {
         if (!journal.CanUndo) return false;
 
-        if (confirm && !await shell.ConfirmAsync("Desfazer renomeação?",
-                $"{journal.DoneCount} arquivo(s) voltarão aos nomes anteriores.\n\"{journal.Description}\"",
+        var done = journal.Operations.Where(o => o.State == OperationState.Done).ToList();
+        var created = done.Count(o => o.Kind == OperationKind.Create);
+        var embedded = done.Count(o => o.Kind == OperationKind.Embed);
+        var moved = done.Count - created - embedded;
+        var effects = new List<string>();
+        if (moved > 0) effects.Add($"{moved} arquivo(s) voltarão aos nomes anteriores");
+        if (created > 0) effects.Add($"{created} legenda(s) baixada(s) irão para a Lixeira");
+        if (embedded > 0) effects.Add($"{embedded} vídeo(s) voltarão a ficar sem as legendas embutidas");
+
+        if (confirm && !await shell.ConfirmAsync(moved > 0 && created + embedded == 0 ? "Desfazer renomeação?" : "Desfazer lote?",
+                $"{string.Join("; ", effects)}.\n\"{journal.Description}\"",
                 "Desfazer"))
             return false;
 
@@ -22,7 +31,9 @@ public sealed class UndoService(ShellServices shell, RenameExecutor executor, Li
         analyzer.ForgetProcessed(journal.FolderKeys);
 
         if (result.Failed == 0)
-            shell.ShowToast($"Desfeito: {result.Succeeded} arquivo(s) voltaram ao nome anterior.");
+            shell.ShowToast(created + embedded == 0
+                ? $"Desfeito: {result.Succeeded} arquivo(s) voltaram ao nome anterior."
+                : $"Desfeito: {result.Succeeded} operação(ões).");
         else
             shell.ShowToast($"Desfeito com {result.Failed} erro(s). Primeiro erro: {result.Errors[0]}", isError: true);
 

@@ -9,8 +9,17 @@ public sealed record ExecutionResult(RenameJournal Journal, int Succeeded, int F
 /// Aplica renomeações registrando tudo num journal <b>antes</b> de mexer nos arquivos,
 /// para que qualquer lote possa ser desfeito, mesmo após uma falha no meio.
 /// </summary>
-public sealed class RenameExecutor(HistoryStore history)
+/// <summary>Desfaz uma operação <see cref="OperationKind.Embed"/> (precisa do mkvmerge quando não há backup).</summary>
+public interface IEmbedUndo
 {
+    void Undo(JournalOperation operation);
+}
+
+/// <param name="trash">Envio à Lixeira (padrão: <see cref="RecycleBin.Send"/>; os testes simulam).</param>
+public sealed class RenameExecutor(HistoryStore history, Action<string>? trash = null, IEmbedUndo? embedUndo = null)
+{
+    private readonly Action<string> _trash = trash ?? RecycleBin.Send;
+
     private const int SaveEvery = 25;
 
     public ExecutionResult Apply(string libraryPath, MediaKind kind, string description, IEnumerable<RenameItem> items,
@@ -21,7 +30,7 @@ public sealed class RenameExecutor(HistoryStore history)
 
         var journal = new RenameJournal
         {
-            Id = $"{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid().ToString("N")[..6]}",
+            Id = RenameJournal.NewId(),
             CreatedAt = DateTimeOffset.Now,
             LibraryPath = libraryPath,
             Kind = kind,
@@ -54,8 +63,22 @@ public sealed class RenameExecutor(HistoryStore history)
             var (from, to) = forward ? (op.From, op.To) : (op.To, op.From);
             try
             {
-                Move(from, to, op.IsDirectory);
-                if (!forward) DeleteIfEmptyCreatedFolder(from, to);
+                switch (op.Kind)
+                {
+                    case OperationKind.Create when !forward:
+                        _trash(op.To);
+                        break;
+                    case OperationKind.Embed when !forward:
+                        if (embedUndo is null) throw new IOException("Desfazer legendas embutidas requer o mkvmerge.");
+                        embedUndo.Undo(op);
+                        break;
+                    case OperationKind.Create or OperationKind.Embed:
+                        throw new InvalidOperationException("Operações de legenda são aplicadas pelo SubtitleDownloader.");
+                    default:
+                        Move(from, to, op.IsDirectory);
+                        if (!forward) DeleteIfEmptyCreatedFolder(from, to);
+                        break;
+                }
                 op.State = forward ? OperationState.Done : OperationState.Undone;
                 op.Error = null;
                 succeeded++;

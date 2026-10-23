@@ -1,3 +1,5 @@
+using System.IO.Enumeration;
+
 namespace MediaOrganizer.Core.Scanning;
 
 /// <summary>
@@ -14,11 +16,37 @@ public sealed partial class LibraryScanner(IEnumerable<string> ignoredFolders, J
 
     public static bool IsSpecialsFolder(string name) => SpecialsFolderRegex().IsMatch(name);
 
+    /// <summary>Pasta de trabalho do app dentro da biblioteca (temporários e backups ao embutir legendas).</summary>
+    public const string WorkFolderName = ".mediaorganizer";
+
     private static readonly EnumerationOptions Options = new()
     {
         IgnoreInaccessible = true,
         AttributesToSkip = FileAttributes.Hidden | FileAttributes.System | FileAttributes.ReparsePoint,
     };
+
+    // Arquivos ocultos entram só se forem legendas (o app oculta as que baixa); ver IsListed.
+    private static readonly EnumerationOptions FileOptions = new()
+    {
+        IgnoreInaccessible = true,
+        AttributesToSkip = FileAttributes.System | FileAttributes.ReparsePoint,
+    };
+
+    /// <summary>
+    /// Arquivo visível, ou legenda oculta. Fica fora o "._arquivo" (AppleDouble que o macOS cria em HDs exFAT/FAT),
+    /// que é oculto e pode ter extensão de legenda sem ser uma.
+    /// </summary>
+    private static bool IsListed(ref FileSystemEntry entry)
+    {
+        if (entry.IsDirectory || entry.FileName.StartsWith("._", StringComparison.Ordinal)) return false;
+        return (entry.Attributes & FileAttributes.Hidden) == 0 || MediaFileTypes.IsSubtitle(entry.FileName.ToString());
+    }
+
+    private static FileSystemEnumerable<string> EnumerateFiles(string dir) =>
+        new FileSystemEnumerable<string>(dir, (ref FileSystemEntry e) => e.ToFullPath(), FileOptions)
+        {
+            ShouldIncludePredicate = IsListed,
+        };
 
     public IReadOnlyList<LibraryFolder> Scan(string rootPath, MediaKind kind)
     {
@@ -63,7 +91,7 @@ public sealed partial class LibraryScanner(IEnumerable<string> ignoredFolders, J
 
     private static IEnumerable<LibraryFolder> ScanLooseMovies(string root)
     {
-        var files = Directory.EnumerateFiles(root, "*", Options).ToList();
+        var files = EnumerateFiles(root).ToList();
         foreach (var video in files.Where(MediaFileTypes.IsVideo).Order(StringComparer.OrdinalIgnoreCase))
         {
             var baseName = Path.GetFileNameWithoutExtension(video);
@@ -81,7 +109,7 @@ public sealed partial class LibraryScanner(IEnumerable<string> ignoredFolders, J
     {
         var hasFiles = false;
 
-        foreach (var file in Directory.EnumerateFiles(dir, "*", Options))
+        foreach (var file in EnumerateFiles(dir))
         {
             hasFiles = true;
             var name = Path.GetFileName(file);

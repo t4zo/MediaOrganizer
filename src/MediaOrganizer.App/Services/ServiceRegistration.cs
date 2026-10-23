@@ -5,6 +5,8 @@ using MediaOrganizer.Core.Execution;
 using MediaOrganizer.Core.Metadata;
 using MediaOrganizer.Core.Planning;
 using MediaOrganizer.Core.State;
+using MediaOrganizer.Core.Subtitles;
+using MediaOrganizer.Core.Subtitles.Providers;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MediaOrganizer.App.Services;
@@ -37,18 +39,55 @@ internal static class ServiceRegistration
             sp.GetRequiredService<MetadataCache>()));
         services.AddSingleton(sp => new PosterLoader(sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(PosterLoader))));
 
+        // Sites de legenda: sem o handler de resiliência padrão, porque nesses sites um 429/406 pode ser cota esgotada
+        // (ProviderHttp repete só falhas de rede/5xx e 429 com Retry-After curto).
+        var subtitleCache = new MetadataCache(Path.Combine(paths.CacheDirectory, "subtitles"), TimeSpan.FromDays(1));
+        services.AddHttpClient(OpenSubtitlesProvider.ProviderName);
+        services.AddSingleton(sp =>
+        {
+            var settings = sp.GetRequiredService<SettingsStore>();
+            return new OpenSubtitlesProvider(
+                sp.GetRequiredService<IHttpClientFactory>().CreateClient(OpenSubtitlesProvider.ProviderName),
+                () => settings.Current.OpenSubtitles, () => settings.Current.IncludeMachineTranslated, subtitleCache);
+        });
+        services.AddHttpClient(SubDlProvider.ProviderName);
+        services.AddSingleton(sp => new SubDlProvider(
+            sp.GetRequiredService<IHttpClientFactory>().CreateClient(SubDlProvider.ProviderName),
+            () => sp.GetRequiredService<SettingsStore>().Current.SubDl, subtitleCache));
+        services.AddHttpClient(SubSourceProvider.ProviderName);
+        services.AddSingleton(sp => new SubSourceProvider(
+            sp.GetRequiredService<IHttpClientFactory>().CreateClient(SubSourceProvider.ProviderName),
+            () => sp.GetRequiredService<SettingsStore>().Current.SubSource, subtitleCache));
+        services.AddSingleton(sp => new SubtitleProviderSet(
+            [sp.GetRequiredService<OpenSubtitlesProvider>(), sp.GetRequiredService<SubDlProvider>(), sp.GetRequiredService<SubSourceProvider>()],
+            sp.GetRequiredService<TimeProvider>()));
+        services.AddSingleton<IMkvMergeRunner, MkvMergeRunner>();
+        services.AddSingleton(sp => new SubtitleEmbedder(
+            sp.GetRequiredService<IMkvMergeRunner>(), () => sp.GetRequiredService<SettingsStore>().Current.MkvMergePath));
+        services.AddSingleton<SubtitleAnalyzer>();
+        // Verificação de sincronia: legendas baixadas e tempos das referências ficam em cache para não gastar cota de novo.
+        services.AddSingleton(new SubtitleContentCache(Path.Combine(paths.CacheDirectory, "subtitle-files"), SubtitleContentCache.DefaultTimeToLive));
+        services.AddSingleton(sp => new SubtitleReferenceProvider(
+            sp.GetRequiredService<IMkvMergeRunner>(), () => sp.GetRequiredService<SettingsStore>().Current.MkvMergePath,
+            Path.Combine(paths.CacheDirectory, "sync-ref")));
+        services.AddSingleton(sp => new SubtitleSyncChecker(
+            sp.GetRequiredService<SubtitleProviderSet>(), sp.GetRequiredService<SubtitleReferenceProvider>(), sp.GetRequiredService<SubtitleContentCache>(),
+            () => sp.GetRequiredService<SettingsStore>().Current.OpenSubtitles.SyncCheckLimit));
+        services.AddSingleton<SubtitleDownloader>();
+
         services.AddSingleton<MediaMatcher>();
         services.AddSingleton<RenamePlanner>();
         services.AddSingleton<LibraryAnalyzer>();
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<CollectionAnalyzer>();
-        services.AddSingleton<RenameExecutor>();
+        services.AddSingleton(sp => new RenameExecutor(sp.GetRequiredService<HistoryStore>(), embedUndo: sp.GetRequiredService<SubtitleEmbedder>()));
 
         services.AddSingleton<ShellServices>();
         services.AddSingleton<UndoService>();
         services.AddSingleton<MainWindowViewModel>();
         services.AddSingleton<OrganizeViewModel>();
         services.AddSingleton<CollectionViewModel>();
+        services.AddSingleton<SubtitlesViewModel>();
         services.AddSingleton<HistoryViewModel>();
         services.AddSingleton<SettingsViewModel>();
         services.AddTransient<OnboardingViewModel>();

@@ -55,6 +55,7 @@ seguindo o padrão **`[Nome da Série] SXXEXX - [Nome do Episódio].[extensão o
 | **Lixo de release** | Lista `RARBG.txt`, `PSArips.com.txt`, `.nfo`, pastas vazias... para enviar à **Lixeira** (nunca apaga definitivamente). |
 | **Filmes** | Renomeia para `Filme (Ano)/Filme (Ano).ext`, criando a pasta quando o arquivo está solto. |
 | **Especiais** | Episódios `S00E01` e pastas `Specials`/`Season 00` usam os títulos da temporada 0; especiais sem número são sugeridos pelo título e só são aplicados se você marcar. |
+| **Baixar legendas** | Encontra as legendas que faltam em `pt-BR` e `en` (configurável), contando as embutidas no MKV como “já tem”, busca no OpenSubtitles, SubDL e SubSource e baixa só as que você selecionar — ao lado do vídeo, ocultas, ou embutidas no MKV. |
 | **Coleção** | Lista, por série e temporada, todos os episódios com a situação de cada um (na pasta, faltando, não exibido), destacando os que faltam. Exporta os faltantes em CSV ou texto. |
 | **Conflitos** | Se dois arquivos ficariam com o mesmo nome, ou o nome já existe, a linha é bloqueada — nada é sobrescrito. |
 | **Portátil** | Configurações e histórico ficam numa pasta `data/` ao lado do executável. |
@@ -131,6 +132,23 @@ Na tela **Coleção**, clique em **Verificar** (`F5`). Para cada série identifi
 
 <img src="docs/images/collection.png" alt="Tela Coleção" width="640" />
 
+### Legendas: baixar as que faltam
+
+1. **Configure ao menos um site** em **Configurações → Legendas** (as chaves são gratuitas):
+   - **OpenSubtitles.com** — crie a chave em [opensubtitles.com/consumers](https://www.opensubtitles.com/consumers). Usuário e senha são opcionais, mas sem login a cota diária de downloads é bem pequena. É o único que confere o *hash* do arquivo (sincronia garantida).
+   - **SubDL** — chave na área de API da sua conta em [subdl.com](https://subdl.com). Consultado quando o OpenSubtitles não tem a legenda ou a cota acabou; também traz pacotes de temporada.
+   - **SubSource** — chave no seu perfil em [subsource.net](https://subsource.net). Terceira opção.
+   - Use **Testar** em cada um.
+2. Na tela **Legendas**, escolha Séries ou Filmes e clique em **Procurar** (`F5`). Buscar não gasta a cota: só o que você baixar conta.
+3. Revise: cada vídeo mostra o que já tem (inclusive as faixas embutidas no MKV) e, para cada idioma que falta, a legenda escolhida — dá para trocar por outra no menu. O selo **hash** indica que o site confirmou a legenda para aquele arquivo. Itens duvidosos (encontrados só pelo nome, ou quando já existe uma legenda `pt` sem região) começam desmarcados.
+4. Clique em **Baixar faltantes** (da série) ou **Baixar selecionadas** (`Ctrl+Enter`). Para voltar atrás, use **Desfazer** na notificação ou no **Histórico**.
+
+**Verificar sincronia.** Quando o vídeo já tem alguma legenda de texto (em qualquer idioma, como arquivo ou embutida no MKV), o botão **Verificar sincronia** do episódio procura opções também nos sites que a busca normal pulou (ela para no primeiro site com casamento confiável), baixa as opções de cada legenda que falta (do OpenSubtitles, até 5 por clique, ajustável em **Configurações → OpenSubtitles**; do SubDL e do SubSource, todas) e compara os tempos das falas com essa referência. Cada opção ganha um selo: **96%** (sincronizada), **12% · atrasada 2,0 s**, **outra taxa de quadros** ou **não confere** (outro corte ou episódio), e o menu passa a listar as mais precisas primeiro. O botão vira **Verificar mais (N)** enquanto houver opções sem verificar. A verificação gasta downloads da cota (a dica do botão mostra quantos), mas o arquivo fica em cache: baixar a opção depois não gasta de novo. Opções com **hash** não precisam ser baixadas. Quando a opção escolhida está deslocada (ou feita para outra taxa de quadros), aparece a caixa **Corrigir ao salvar (atrasada 0,4 s)**, já marcada: ao salvar ou embutir, os tempos de todas as falas (SRT, VTT ou ASS/SSA) são regravados com o ajuste medido, sem mexer no texto nem nos estilos; o cache guarda o original e o Histórico registra a correção. Nas sincronizadas com diferença de 0,2 s ou mais a caixa também aparece, mas desmarcada (a diferença pode ser da própria referência); as que não conferem nunca são corrigidas. Para usar uma faixa embutida como referência é preciso o MKVToolNix (`mkvextract`); faixas de imagem (PGS/VobSub) não servem.
+
+**Arquivos ocultos.** Por padrão, as legendas baixadas recebem o atributo de oculto (Windows e macOS), sem mudar o nome — os players continuam encontrando. Para vê-las: **Exibir → Itens ocultos** no Explorer ou `Cmd+Shift+.` no Finder. No Linux não há como ocultar sem renomear, então elas ficam visíveis. Desligue em **Configurações → Legendas**.
+
+**Embutir no vídeo (opcional).** Com o [MKVToolNix](https://mkvtoolnix.download/downloads.html) instalado, escolha **Embutir no vídeo (MKV)** ao baixar, ou use **Embutir existentes** para incorporar as legendas que já estão na pasta. O app gera um MKV novo (precisa de espaço livre igual ao tamanho do vídeo), confere se nenhuma faixa se perdeu e só então troca; o original fica em `.mediaorganizer/originals` na pasta da série até você clicar em **Remover backups** no Histórico. MP4 e AVI continuam com o arquivo ao lado.
+
 ## Regras de nomeação (resumo)
 
 - Formato: `Série SXXEXX - Título.ext`; vários episódios num arquivo: `Série S04E01-E02 - Título A & Título B.ext`.
@@ -149,10 +167,12 @@ Tudo fica em `data/` **ao lado do executável** (no macOS, ao lado do `.app`), i
 
 | Arquivo | Conteúdo |
 | --- | --- |
-| `settings.json` | API key, pastas ignoradas, padrões de lixo, correspondências escolhidas |
+| `settings.json` | API key do TMDb, chaves dos sites de legenda, pastas ignoradas, padrões de lixo, correspondências escolhidas |
 | `processed.json` | Hash de cada pasta já processada ("nada foi alterado") |
 | `history/*.json` | Lotes aplicados (usados para desfazer) |
-| `cache/` | Respostas do TMDb (7 dias) |
+| `cache/` | Respostas do TMDb (7 dias) e buscas de legendas (`cache/subtitles`, 1 dia) |
+
+As chaves (e a senha do OpenSubtitles, se informada) ficam em texto puro em `settings.json`. Ao embutir legendas, o app também usa uma pasta oculta `.mediaorganizer` dentro de cada série para temporários e para os vídeos originais guardados.
 
 Para usar outro local, defina a variável de ambiente `MEDIAORGANIZER_DATA`. Se a pasta do executável não puder ser gravada, o app usa a pasta de dados do usuário (`%AppData%\MediaOrganizer`, `~/Library/Application Support/MediaOrganizer` ou `~/.config/MediaOrganizer`).
 
@@ -165,6 +185,10 @@ Para usar outro local, defina a variável de ambiente `MEDIAORGANIZER_DATA`. Se 
 **Apareceu "Já existe um arquivo com este nome".** Há outro arquivo com o nome de destino (ex.: duas versões do mesmo episódio). Renomeie ou remova uma das cópias.
 
 **Erro de permissão ao renomear.** Verifique se o arquivo não está aberto num player e se você tem permissão de escrita na pasta. Itens que falham ficam registrados no Histórico; o resto do lote é aplicado.
+
+**Baixei as legendas mas não vejo os arquivos.** Elas estão ocultas (veja **Arquivos ocultos** acima). O player encontra normalmente.
+
+**"Cota diária esgotada".** Os sites limitam downloads por dia; o app passa a usar o próximo site configurado. No OpenSubtitles, informar usuário e senha aumenta a cota.
 
 **Quero reprocessar tudo.** Use o botão ↻ ao lado de **Analisar** (reanalisa inclusive pastas sem alterações) ou **Configurações → Esquecer pastas processadas**.
 

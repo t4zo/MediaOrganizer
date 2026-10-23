@@ -55,7 +55,11 @@ public sealed record MovieDetails(
     string? OriginalLanguage,
     string? ReleaseDate,
     string? Overview,
-    string? PosterPath);
+    string? PosterPath,
+    string? ImdbId = null);
+
+/// <summary>IDs em outras bases (<c>tv/{id}/external_ids</c>); o IMDb é o que os sites de legenda aceitam melhor.</summary>
+public sealed record ExternalIds(string? ImdbId, int? TvdbId);
 
 /// <summary>Resultado de busca unificado (série ou filme) exibido na tela de correspondência.</summary>
 public sealed record MediaCandidate(

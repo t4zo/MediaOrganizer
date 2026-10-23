@@ -45,6 +45,22 @@ public sealed class CollectionTests : IDisposable
     }
 
     [Fact]
+    public async Task NewSeriesIsIdentifiedWithoutVisitingOrganize()
+    {
+        _library.File("Test Show/Test Show S01E01.mkv");
+        _tmdb.Search("Test Show", "en-US", (100, "Test Show", "Test Show", "en"));
+        var client = new TmdbClient(new HttpClient(_tmdb), () => _settings.Current.TmdbApiKey);
+        var identifier = new LibraryAnalyzer(new MediaMatcher(client), new Planning.RenamePlanner(client), _settings, new ProcessedStore(_library.Data));
+        var analyzer = new CollectionAnalyzer(client, _settings, new FixedTime(Today), identifier);
+        var folder = Assert.Single(new LibraryScanner([], new JunkDetector([]), includeSpecials: true).Scan(_library.Root, MediaKind.Series));
+
+        var report = await analyzer.AnalyzeSeriesAsync(folder, refresh: false, TestContext.Current.CancellationToken);
+
+        Assert.Equal(CollectionStatus.Incomplete, report.Status);
+        Assert.Equal(100, _settings.GetMatch("Series/Test Show"));
+    }
+
+    [Fact]
     public async Task ListsMissingAiredEpisodesPerSeason()
     {
         _library.File("Test Show/Test Show S01E01.mkv");

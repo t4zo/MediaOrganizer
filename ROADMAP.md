@@ -17,7 +17,7 @@ Legenda: ✅ concluído · 🚧 em andamento · 📋 planejado · 💡 ideia (a 
 
 ## v1.1 — Distribuição automática, especiais e coleção ✅
 
-Publicada em [v1.1.0](https://github.com/t4zo/MediaOrganizer/releases/tag/v1.1.0). Plano: [docs/plans/v1.1.md](docs/plans/v1.1.md).
+Publicada em [v1.1.0](https://github.com/t4zo/MediaOrganizer/releases/tag/v1.1.0).
 
 ### Publicação de versões no GitHub (CI/CD)
 
@@ -44,14 +44,20 @@ Publicada em [v1.1.0](https://github.com/t4zo/MediaOrganizer/releases/tag/v1.1.0
 - Uma pasta `Specials` com arquivos de download é renomeada com os títulos oficiais da temporada 0.
 - A tela Coleção lista corretamente os episódios ausentes de uma série com temporadas parciais.
 
-## v1.2 — Baixar legendas 📋
+## v1.2 — Baixar legendas 🚧
 
 - Buscar legendas para episódios/filmes sem legenda no idioma desejado (ex.: `pt-BR`, `en`).
-- Provedor inicial: [OpenSubtitles](https://opensubtitles.stoplight.io/) (API com chave gratuita); busca por *hash* do arquivo e, em seguida, por título/temporada/episódio.
-- Salvar ao lado do vídeo já no padrão (`Série S01E01 - Título.pt-BR.srt`), registrando no Histórico para poder desfazer.
-- Configuração de idiomas preferidos e opção de incluir legendas forçadas/SDH.
+- Considerar as legendas já presentes: arquivos externos e faixas embutidas no MKV (sem baixar o que já existe).
+- Provedores, nesta ordem:
+  - [OpenSubtitles.com](https://opensubtitles.stoplight.io/): *hash* do arquivo + ID do título;
+  - [SubDL](https://subdl.com/api-doc): ID do título; inclui pacotes de temporada;
+  - [SubSource](https://subsource.net/): ID do título.
+- Nova tela **Legendas**: busca na prévia (sem gastar cota) e download só do que for selecionado.
+- Salvar ao lado do vídeo já no padrão (`Série S01E01 - Título.pt-BR.srt`), oculto por padrão, ou embutir no MKV (MKVToolNix), registrando no Histórico para poder desfazer.
+- Configuração de idiomas preferidos, legendas forçadas/SDH e chaves de cada provedor.
+- **Verificar sincronia** por episódio: compara os tempos das opções com uma legenda que o vídeo já tem (arquivo ou faixa de texto do MKV) e mostra a precisão de cada uma (sincronizada, adiantada/atrasada, outra taxa de quadros, não confere). As opções baixadas para a verificação ficam em cache e não gastam cota de novo ao salvar. **Corrigir ao salvar**: aplica o deslocamento (e a taxa de quadros) medido ao gravar ou embutir a legenda, regravando os tempos de SRT, VTT e ASS/SSA.
 
-Critério de pronto: selecionar uma série e baixar as legendas `pt-BR` faltantes em um clique, com prévia antes de salvar.
+Critério de pronto: selecionar uma série e baixar as legendas `pt-BR` e `en` faltantes em um clique, com prévia antes de salvar.
 
 ## Ideias a avaliar 💡
 
