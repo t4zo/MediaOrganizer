@@ -379,6 +379,18 @@ public sealed partial class SubtitleItemViewModel : ObservableObject
     public string? SyncError => SelectedOption?.SyncError is { } error ? $"Sincronia não verificada: {error}" : null;
     public bool HasSyncError => SyncError is not null;
 
+    // Caixa "Corrigir ao salvar (atrasada 0,4 s)": aplica o ajuste medido ao gravar a legenda.
+
+    private SyncResult? _fixFor;
+
+    private SubtitleAdjustment? Correction => Sync?.Correction;
+
+    public bool CanFixSync => Correction is not null;
+    public string? FixSyncText => Sync is { Correction: not null } sync ? $"Corrigir ao salvar ({sync.CorrectionText})" : null;
+
+    [ObservableProperty]
+    public partial bool FixSync { get; set; }
+
     /// <summary>
     /// Marca cada opção com o resultado e reordena: verificadas primeiro (melhor sincronia no topo), depois as
     /// demais na ordem original. Se o usuário não trocou a opção à mão, a melhor passa a ser a escolhida.
@@ -423,6 +435,15 @@ public sealed partial class SubtitleItemViewModel : ObservableObject
         OnPropertyChanged(nameof(SyncTip));
         OnPropertyChanged(nameof(SyncError));
         OnPropertyChanged(nameof(HasSyncError));
+        OnPropertyChanged(nameof(CanFixSync));
+        OnPropertyChanged(nameof(FixSyncText));
+
+        // Volta ao padrão só quando muda o resultado da opção escolhida: reverificar outras não desfaz a escolha do usuário.
+        if (!ReferenceEquals(_fixFor, Sync))
+        {
+            _fixFor = Sync;
+            FixSync = Sync is { Correction: not null, CorrectByDefault: true };
+        }
     }
 
     partial void OnSelectedOptionChanged(CandidateOption? value)
@@ -447,5 +468,7 @@ public sealed partial class SubtitleItemViewModel : ObservableObject
     }
 
     internal SubtitleDownload? ToDownload() =>
-        IsSelected && CanSelect && SelectedOption is { } option ? new SubtitleDownload(_folder.Plan, Query!, option.Candidate) : null;
+        IsSelected && CanSelect && SelectedOption is { } option
+            ? new SubtitleDownload(_folder.Plan, Query!, option.Candidate, FixSync ? Correction : null)
+            : null;
 }

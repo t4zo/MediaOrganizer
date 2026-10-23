@@ -198,6 +198,26 @@ public sealed class SubtitleWorkflowTests : IDisposable
     }
 
     [Fact]
+    public async Task CorrectionIsAppliedToTheSavedFileButNotToTheCache()
+    {
+        _library.File("Show/Show S01E01 - One.mkv");
+        _first.Has(1, "pt-BR");
+        var cache = new SubtitleContentCache(Path.Combine(_library.Data.CacheDirectory, "subtitle-files"), SubtitleContentCache.DefaultTimeToLive);
+        var downloader = new SubtitleDownloader(_providers, _history, _processed, _settings, _organizer, contentCache: cache);
+        var plan = await AnalyzeAsync();
+        var adjustment = new SubtitleAdjustment(TimeSpan.FromMilliseconds(400));
+        var download = Selected(plan)[0] with { Adjustment = adjustment };
+
+        var result = await downloader.ApplyAsync(Root, MediaKind.Series, "Legendas: Show", [download], ct: TestContext.Current.CancellationToken);
+
+        var target = Path.Combine(Root, "Show", "Show S01E01 - One.pt-BR.srt");
+        Assert.Equal(1, result.Succeeded);
+        Assert.Equal("00:00:01,400 --> 00:00:02,400", File.ReadAllText(target, Encoding.UTF8).Split('\n')[1]);
+        Assert.Contains("00:00:01,000 --> 00:00:02,000", Encoding.UTF8.GetString(cache.Get(download.Candidate, download.Query)!), StringComparison.Ordinal);
+        Assert.Equal($"pt-BR ({adjustment.Note})", Assert.Single(result.Journal.Operations).Note);
+    }
+
+    [Fact]
     public async Task VisibleWhenHidingIsOff()
     {
         _settings.Update(s => s.HideSubtitleFiles = false);

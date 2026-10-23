@@ -17,6 +17,9 @@ public sealed class FakeMkvMergeRunner : IMkvMergeRunner
     public int ExitCode { get; set; }
     public bool DropFirstTrack { get; set; }
 
+    /// <summary>Conteúdo das legendas recebidas para embutir, lido antes de o temporário ser apagado.</summary>
+    public List<string> SubtitleInputs { get; } = [];
+
     public Task<MkvMergeResult> RunAsync(string executable, IReadOnlyList<string> arguments, IProgress<double>? progress, CancellationToken ct)
     {
         Calls.Add(arguments);
@@ -52,7 +55,11 @@ public sealed class FakeMkvMergeRunner : IMkvMergeRunner
             {
                 if (arguments[i] == "--language") language = arguments[++i][2..];
                 else if (arguments[i].StartsWith("--", StringComparison.Ordinal)) i++;
-                else builder.Subtitle(language == "en" ? "eng" : "por", language);
+                else
+                {
+                    SubtitleInputs.Add(File.ReadAllText(arguments[i], Encoding.UTF8));
+                    builder.Subtitle(language == "en" ? "eng" : "por", language);
+                }
             }
         }
 
@@ -157,6 +164,23 @@ public sealed class SubtitleEmbedTests : IDisposable
         Assert.True(File.Exists(op.From));
         Assert.Single(MatroskaReader.ReadTracks(op.From)); // o backup é o original
         Assert.Empty(Directory.EnumerateFiles(Path.Combine(_library.Root, "Show", ".mediaorganizer", "tmp")));
+    }
+
+    [Fact]
+    public async Task CorrectionIsAppliedBeforeEmbedding()
+    {
+        Video();
+        var plan = await AnalyzeAsync();
+        var adjustment = new SubtitleAdjustment(TimeSpan.FromSeconds(-0.5));
+        var downloads = plan.Videos.SelectMany(v => v.Items.Select(i =>
+            new SubtitleDownload(plan, v.Query!, i.Best!, i.Wanted.Code == "pt-BR" ? adjustment : null))).ToList();
+
+        var result = await _downloader.ApplyAsync(_library.Root, MediaKind.Series, "Legendas", downloads, SubtitleOutput.Embed,
+            ct: TestContext.Current.CancellationToken);
+
+        Assert.Equal((2, 0), (result.Succeeded, result.Failed));
+        Assert.Equal(["00:00:00,500 --> 00:00:01,500", "00:00:01,000 --> 00:00:02,000"], _runner.SubtitleInputs.Select(s => s.Split('\n')[1]));
+        Assert.Equal($"pt-BR ({adjustment.Note}), en", Assert.Single(result.Journal.Operations).Note);
     }
 
     [Fact]

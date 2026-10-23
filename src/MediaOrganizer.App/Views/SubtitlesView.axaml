@@ -257,6 +257,8 @@
                                     <TextBlock Classes="caption" Text="{Binding Message}" TextWrapping="Wrap" IsVisible="{Binding HasMessage}"
                                                Foreground="{DynamicResource WarningBrush}" />
                                     <TextBlock Classes="caption" Text="{Binding SyncError}" TextWrapping="Wrap" IsVisible="{Binding HasSyncError}" />
+                                    <CheckBox IsChecked="{Binding FixSync}" IsVisible="{Binding CanFixSync}" Content="{Binding FixSyncText}"
+                                              ToolTip.Tip="Regrava os tempos da legenda com o ajuste medido na verificação (o texto não muda)." />
                                   </StackPanel>
                                   <Panel Grid.Column="3" VerticalAlignment="Top" Margin="0,8,0,0" ToolTip.Tip="{Binding StatusText}">
                                     <Border Classes="badge done" IsVisible="{Binding HashMatch}" ToolTip.Tip="O site confirmou que a legenda é deste arquivo (hash): sincronia praticamente garantida.">

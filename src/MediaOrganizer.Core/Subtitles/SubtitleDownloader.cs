@@ -5,10 +5,14 @@ using MediaOrganizer.Core.State;
 namespace MediaOrganizer.Core.Subtitles;
 
 /// <summary>Uma legenda escolhida na prévia para baixar.</summary>
-public sealed record SubtitleDownload(FolderSubtitlePlan Folder, SubtitleQuery Query, SubtitleCandidate Candidate)
+/// <param name="Adjustment">Correção de sincronia medida na verificação, aplicada ao salvar (o cache continua com o original).</param>
+public sealed record SubtitleDownload(FolderSubtitlePlan Folder, SubtitleQuery Query, SubtitleCandidate Candidate, SubtitleAdjustment? Adjustment = null)
 {
     public string VideoPath => Query.VideoPath;
     public string TargetPath => SubtitleItem.TargetPath(Query.VideoPath, Candidate);
+
+    /// <summary>Nota do journal: o idioma, e a correção se houver ("pt-BR (sincronia corrigida em +0,40 s)").</summary>
+    internal string Note => Adjustment is { } adjustment ? $"{Candidate.Language} ({adjustment.Note})" : Candidate.Language.ToString();
 }
 
 /// <summary>Legendas externas de um vídeo MKV para embutir (botão "Embutir no vídeo").</summary>
@@ -48,7 +52,7 @@ public sealed class SubtitleDownloader(SubtitleProviderSet providers, HistorySto
                     Kind = OperationKind.Embed,
                     From = "",
                     To = group.Key,
-                    Note = string.Join(", ", group.Select(d => d.Candidate.Language.ToString())),
+                    Note = string.Join(", ", group.Select(d => d.Note)),
                 }, [.. group], group.Key));
                 continue;
             }
@@ -58,7 +62,7 @@ public sealed class SubtitleDownloader(SubtitleProviderSet providers, HistorySto
                 Kind = OperationKind.Create,
                 From = $"{d.Candidate.Provider}:{d.Candidate.ProviderId}",
                 To = d.TargetPath,
-                Note = d.Candidate.Language.ToString(),
+                Note = d.Note,
             }, [d], null)));
         }
 
@@ -276,8 +280,17 @@ public sealed class SubtitleDownloader(SubtitleProviderSet providers, HistorySto
         }
     }
 
-    /// <summary>Baixa (ou reaproveita a da verificação de sincronia; falha sem rede se a cota do site já acabou) e converte texto para UTF-8.</summary>
-    private Task<byte[]> FetchAsync(SubtitleDownload download, CancellationToken ct) => _fetcher.FetchAsync(download.Candidate, download.Query, ct);
+    /// <summary>
+    /// Baixa (ou reaproveita a da verificação de sincronia; falha sem rede se a cota do site já acabou), converte texto
+    /// para UTF-8 e aplica a correção de sincronia escolhida.
+    /// </summary>
+    private async Task<byte[]> FetchAsync(SubtitleDownload download, CancellationToken ct)
+    {
+        var content = await _fetcher.FetchAsync(download.Candidate, download.Query, ct).ConfigureAwait(false);
+        return download.Adjustment is { } adjustment && SubtitleText.IsText(download.Candidate.Format)
+            ? SubtitleRetimer.Apply(content, adjustment)
+            : content;
+    }
 
     /// <summary>Grava num temporário e move para o destino sem sobrescrever.</summary>
     internal static void Write(string target, byte[] content)

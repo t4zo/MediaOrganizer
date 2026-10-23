@@ -23,7 +23,7 @@ public static partial class SubtitleCues
         return [.. cues.Where(c => c.End > c.Start && c.Duration <= MaxCueDuration).OrderBy(c => c.Start)];
     }
 
-    private static bool IsAss(string[] lines) =>
+    internal static bool IsAss(string[] lines) =>
         lines.Any(l => l.TrimStart().StartsWith("Dialogue:", StringComparison.OrdinalIgnoreCase) ||
                        l.Trim().Equals("[Events]", StringComparison.OrdinalIgnoreCase));
 
@@ -79,7 +79,7 @@ public static partial class SubtitleCues
     private static string StripTags(string text) => TagRegex().Replace(text, "").Trim();
 
     /// <summary>"01:02:03,456", "01:02:03.456" ou "02:03.456" (VTT sem horas).</summary>
-    private static TimeSpan? ParseSrtTime(string value)
+    internal static TimeSpan? ParseSrtTime(string value)
     {
         var parts = value.Trim().Replace(',', '.').Split(':');
         if (parts.Length is < 2 or > 3) return null;
@@ -90,7 +90,7 @@ public static partial class SubtitleCues
     }
 
     /// <summary>"0:01:02.34" (centésimos).</summary>
-    private static TimeSpan? ParseAssTime(string value)
+    internal static TimeSpan? ParseAssTime(string value)
     {
         var parts = value.Trim().Split(':');
         if (parts.Length != 3 ||
@@ -112,7 +112,7 @@ public static partial class SubtitleCues
     }
 
     [GeneratedRegex(@"^\s*(?<start>(?:\d{1,2}:)?\d{1,2}:\d{2}[,.]\d{1,3})\s*-->\s*(?<end>(?:\d{1,2}:)?\d{1,2}:\d{2}[,.]\d{1,3})")]
-    private static partial Regex SrtTimingRegex();
+    internal static partial Regex SrtTimingRegex();
 
     /// <summary>Tags HTML do SRT/VTT e blocos de estilo do ASS ("{\an8}").</summary>
     [GeneratedRegex(@"<[^>]*>|\{[^}]*\}")]

@@ -61,6 +61,21 @@ public sealed record SyncResult(double Precision, TimeSpan Offset, double Scale,
         _ => "As falas não coincidem com a referência em nenhum alinhamento: provavelmente outro corte ou outro episódio.",
     };
 
+    /// <summary>
+    /// Ajuste que corrige a legenda ao salvar: deslocadas, outra taxa de quadros, ou sincronizadas com diferença
+    /// medida (≥ 0,2 s). <c>null</c> quando não há o que corrigir ou a legenda não confere com a referência.
+    /// </summary>
+    public SubtitleAdjustment? Correction =>
+        Verdict is SyncVerdict.Shifted or SyncVerdict.FrameRate || (Verdict == SyncVerdict.Synced && HasSmallOffset)
+            ? SubtitleAdjustment.From(this)
+            : null;
+
+    /// <summary>A correção já vem marcada? Só quando a diferença incomoda; a pequena das sincronizadas pode ser da própria referência.</summary>
+    public bool CorrectByDefault => Verdict is SyncVerdict.Shifted or SyncVerdict.FrameRate;
+
+    /// <summary>O que a correção resolve: "atrasada 0,4 s" ou "outra taxa de quadros".</summary>
+    public string CorrectionText => Verdict == SyncVerdict.FrameRate ? "outra taxa de quadros" : OffsetText;
+
     /// <summary>Sincronizada, mas com diferença medida (de 0,2 s a ~0,6 s): o texto mostra quanto.</summary>
     private bool HasSmallOffset => Scale == 1 && Math.Abs(Offset.TotalMilliseconds) >= 200;
 
